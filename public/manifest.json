@@ -1,0 +1,22 @@
+{
+  "short_name": "Lumina",
+  "name": "Lumina Trade - Obsidian Pro Terminal",
+  "description": "Institutional-grade crypto & assets trading terminal with AI strategies and orderflow analytics.",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#111417",
+  "theme_color": "#00ff94",
+  "display": "standalone",
+  "orientation": "any"
+}

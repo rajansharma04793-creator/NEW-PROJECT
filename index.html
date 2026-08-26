@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" class="dark" style="background-color: #111417; color: #e1e2e7; color-scheme: dark;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Lumina Trade - The Obsidian Terminal</title>
+    <meta name="description" content="Institutional-grade liquidity. Zero compromise. The Obsidian Terminal." />
+    
+    <!-- PWA & Mobile App Support -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#111417" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lumina Trade" />
+    
+    <!-- Fonts: Hanken Grotesk & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <meta property="og:title" content="Lumina Trade - The Obsidian Terminal" />
+    <meta property="og:description" content="Institutional-grade crypto & assets trading terminal." />
+    <meta property="og:type" content="website" />
+    <style>
+      html, body {
+        background-color: #111417 !important;
+        color: #e1e2e7 !important;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        width: 100%;
+        overflow-x: hidden;
+      }
+      #root {
+        min-height: 100vh;
+        background-color: #111417;
+      }
+    </style>
+  </head>
+  <body class="bg-[#111417] text-[#e1e2e7] antialiased overflow-x-hidden selection:bg-[#f6be16] selection:text-[#0b0e11]" style="background-color: #111417;">
+    <div id="root">
+      <!-- Instant dark placeholder while JS bundle loads -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background-color:#111417;color:#fff8f1;font-family:system-ui,-apple-system,sans-serif;">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(246,190,22,0.15);border:1px solid rgba(246,190,22,0.4);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f6be16" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#fff8f1;">Lumina Trade</div>
+        <div style="font-size:11px;color:#99907f;margin-top:6px;font-family:monospace;">INITIALIZING TERMINAL...</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

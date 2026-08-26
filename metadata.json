@@ -1,0 +1,6 @@
+{
+  "name": "Lumina Trade - The Obsidian Terminal",
+  "description": "Institutional-grade crypto & commodities trading terminal with TradingView-style interactive drawing panel, comprehensive technical indicator suite (EMA ribbons, Supertrend, Bollinger, Keltner, Donchian, Parabolic SAR, Volume Profile VPVR, Fibonacci Retracements, MACD, RSI, Stochastics, Smart Money SMC), Chart & Order Flow Switchboard (Footprint cluster delta matrix, Liquidity Depth Heatmap, TPO Market Profile, DOM price ladder), multi-chart layout patterns, and conversational AI Chat Analyst for real-time BUY/SELL signals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
