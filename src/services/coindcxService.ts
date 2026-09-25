@@ -1,5 +1,6 @@
 import { AssetPair, TickerInfo, CoinDCXTickerRaw, Candle, OrderBookItem, FuturesInstrument } from '../types';
 import { ALL_COINS_METADATA, INITIAL_TICKERS } from '../data/marketData';
+import { fetchInvestingTickers, fetchInvestingCandles } from './investingService';
 
 export interface CoinPairConfig {
   coindcxMarkets: string[];
@@ -212,6 +213,36 @@ export function getCoinDCXPairKey(
   type: 'ticker' | 'candle_orderbook' = 'candle_orderbook',
   currency: 'USDT' | 'INR' = 'USDT'
 ): string {
+  // If already prefixed or special non-crypto symbol, preserve it
+  if (
+    symbol.startsWith('B-') ||
+    symbol.startsWith('I-') ||
+    symbol.startsWith('HB-') ||
+    symbol.includes('EUR') ||
+    symbol.includes('GBP') ||
+    symbol.includes('JPY') ||
+    symbol.includes('CHF') ||
+    symbol.includes('CAD') ||
+    symbol.includes('AUD') ||
+    symbol.includes('NVDA') ||
+    symbol.includes('AAPL') ||
+    symbol.includes('TSLA') ||
+    symbol.includes('MSFT') ||
+    symbol.includes('AMZN') ||
+    symbol.includes('GOOGL') ||
+    symbol.includes('META') ||
+    symbol.includes('RELIANCE') ||
+    symbol.includes('TCS') ||
+    symbol.includes('HDFCBANK') ||
+    symbol.includes('NIFTY') ||
+    symbol.includes('SPX') ||
+    symbol.includes('QQQ') ||
+    symbol.includes('BRENT') ||
+    symbol.includes('COPPER')
+  ) {
+    return symbol;
+  }
+
   const base = symbol.replace('/USDT', '').replace('-USDT', '').replace('/INR', '').replace('-INR', '').toUpperCase();
   if (type === 'ticker') {
     return currency === 'INR' ? `${base}INR` : `${base}USDT`;
@@ -235,7 +266,8 @@ export async function fetchCoinDCXCandles(
   pairOrSymbol: string,
   interval: string = '15m',
   limit: number = 150,
-  currency: 'USDT' | 'INR' = 'USDT'
+  currency: 'USDT' | 'INR' = 'USDT',
+  externalSignal?: AbortSignal
 ): Promise<Candle[] | null> {
   try {
     const pairKey = pairOrSymbol.startsWith('B-') || pairOrSymbol.startsWith('I-')
@@ -243,7 +275,18 @@ export async function fetchCoinDCXCandles(
       : getCoinDCXPairKey(pairOrSymbol, 'candle_orderbook', currency);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        clearTimeout(timeoutId);
+        return null;
+      }
+      externalSignal.addEventListener('abort', () => {
+        clearTimeout(timeoutId);
+        controller.abort();
+      });
+    }
 
     const res = await fetch(
       `/api/coindcx/candles?pair=${encodeURIComponent(pairKey)}&interval=${encodeURIComponent(
@@ -280,9 +323,7 @@ export async function fetchCoinDCXCandles(
         }
       }
     }
-  } catch (err) {
-    console.warn('fetchCoinDCXCandles error:', err);
-  }
+  } catch {}
   return null;
 }
 
@@ -304,7 +345,7 @@ export async function fetchCoinDCXOrderBook(
       : getCoinDCXPairKey(pairOrSymbol, 'candle_orderbook', currency);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const res = await fetch(
       `/api/coindcx/orderbook?pair=${encodeURIComponent(pairKey)}&_t=${Date.now()}`,
@@ -349,20 +390,68 @@ export async function fetchCoinDCXOrderBook(
   return null;
 }
 
+let masterTickersInFlight: Promise<{
+  tickers: Partial<Record<AssetPair, TickerInfo>>;
+  latencyMs: number;
+  success: boolean;
+}> | null = null;
+
 /**
  * Fetches live ticker records from CoinDCX API and maps them to standard TickerInfo objects
  * - Synchronizes with CoinDCX Global Futures Active Instruments for derivatives and commodities (e.g. XAU/USDT)
+ * Supports force=true to bypass all caches and force a fresh fetch.
  */
-export async function fetchCoinDCXTickers(): Promise<{
+export async function fetchCoinDCXTickers(force = false): Promise<{
   tickers: Partial<Record<AssetPair, TickerInfo>>;
   latencyMs: number;
   success: boolean;
 }> {
-  const start = performance.now();
+  if (force) {
+    masterTickersInFlight = null;
+  }
+
+  if (masterTickersInFlight) {
+    return masterTickersInFlight;
+  }
+
+  masterTickersInFlight = (async () => {
+    const start = performance.now();
+
+    // Try Unified Master Tickers endpoint (Binance Spot + Futures + CoinDCX + Investing.com Live)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(new Error('Master tickers fetch timeout')), 7000);
+
+      const forceParam = force ? '&force=true&reset=true' : '';
+      const masterRes = await fetch(`/api/market/watchlist-tickers?_t=${Date.now()}${forceParam}`, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      clearTimeout(timeoutId);
+
+      if (masterRes.ok) {
+        const masterData = await masterRes.json();
+        if (masterData && masterData.tickers && Object.keys(masterData.tickers).length > 0) {
+          const latencyMs = Math.round(performance.now() - start);
+          return {
+            tickers: masterData.tickers as Partial<Record<AssetPair, TickerInfo>>,
+            latencyMs,
+            success: true,
+          };
+        }
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.warn('Unified master tickers fetch note, falling back to multi-provider:', err?.message || err);
+      }
+    }
+
   try {
-    const [rawList, futuresMap] = await Promise.all([
+    const [rawList, futuresMap, investingRes] = await Promise.all([
       fetchRawCoinDCXData(),
       fetchCoinDCXFuturesActiveInstruments(),
+      fetchInvestingTickers().catch(() => ({ tickers: {}, latencyMs: 0, success: false })),
     ]);
 
     const rawMap = new Map<string, CoinDCXTickerRaw>();
@@ -524,13 +613,34 @@ export async function fetchCoinDCXTickers(): Promise<{
       };
     });
 
+    // Merge real-time Investing.com Forex, Metals, Commodities & Stocks quotes
+    if (investingRes && investingRes.tickers) {
+      Object.entries(investingRes.tickers).forEach(([sym, ticker]) => {
+        if (ticker && ticker.price > 0) {
+          const existing = result[sym as AssetPair];
+          result[sym as AssetPair] = {
+            ...(existing || {}),
+            ...ticker,
+            symbol: sym as AssetPair,
+            inrPrice: ticker.inrPrice || (ticker.price * usdtInrRate),
+            precision: ticker.precision || existing?.precision || 2,
+          } as TickerInfo;
+        }
+      });
+    }
+
     const latencyMs = Math.round(performance.now() - start);
-    return { tickers: result, latencyMs, success: rawList !== null || futuresMap !== null };
+    return { tickers: result, latencyMs, success: rawList !== null || futuresMap !== null || investingRes.success };
   } catch (error) {
     const latencyMs = Math.round(performance.now() - start);
     console.warn('CoinDCX fetch fallback used:', error);
     return { tickers: {}, latencyMs, success: false };
   }
+  })().finally(() => {
+    masterTickersInFlight = null;
+  });
+
+  return masterTickersInFlight;
 }
 
 /**
@@ -564,3 +674,44 @@ export async function fetchLiveCandles(
   }
   return null;
 }
+
+/**
+ * Hard reset all API market data:
+ * 1. Purges server cache via /api/market/reset-cache
+ * 2. Clears client-side in-flight promises and localStorage cached signal prices
+ * 3. Immediately re-syncs all live market prices from Binance, CoinDCX, and Investing feeds
+ */
+export async function resetAllApiMarketData(): Promise<{
+  tickers: Partial<Record<AssetPair, TickerInfo>>;
+  latencyMs: number;
+  success: boolean;
+}> {
+  masterTickersInFlight = null;
+  const start = performance.now();
+
+  try {
+    const resetRes = await fetch(`/api/market/reset-cache?_t=${Date.now()}`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (resetRes.ok) {
+      const resetData = await resetRes.json();
+      if (resetData?.data?.tickers && Object.keys(resetData.data.tickers).length > 0) {
+        const latencyMs = Math.round(performance.now() - start);
+        return {
+          tickers: resetData.data.tickers as Partial<Record<AssetPair, TickerInfo>>,
+          latencyMs,
+          success: true,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('reset-cache API request error, falling back to forced ticker fetch:', err);
+  }
+
+  // Fallback: force fetch with cache-busting
+  return fetchCoinDCXTickers(true);
+}
+

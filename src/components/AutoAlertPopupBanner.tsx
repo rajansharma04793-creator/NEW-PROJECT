@@ -21,7 +21,10 @@ interface AutoAlertPopupBannerProps {
   ticker?: TickerInfo;
   onDismiss: () => void;
   onSelectAndTrade: (signal: AISignal) => void;
+  onExecuteSignal?: (signal: AISignal) => void;
   onOpenAutoAlertSettings?: () => void;
+  onPauseAlerts?: () => void;
+  isAlertsPaused?: boolean;
 }
 
 export const AutoAlertPopupBanner: React.FC<AutoAlertPopupBannerProps> = ({
@@ -29,7 +32,10 @@ export const AutoAlertPopupBanner: React.FC<AutoAlertPopupBannerProps> = ({
   ticker,
   onDismiss,
   onSelectAndTrade,
+  onExecuteSignal,
   onOpenAutoAlertSettings,
+  onPauseAlerts,
+  isAlertsPaused,
 }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(100);
@@ -100,20 +106,40 @@ export const AutoAlertPopupBanner: React.FC<AutoAlertPopupBannerProps> = ({
               <Zap className="w-3 h-3 text-[#00ff94]" />
               AUTO SIGNAL DETECTED
             </span>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#ffd87f]/15 text-[#ffd87f] border border-[#ffd87f]/30">
+              DEMO SIGNAL — PAPER TRADING ONLY
+            </span>
             <span className="text-[10px] text-[#99907f] font-mono hidden sm:inline">
               {new Date(signal.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           </div>
 
           <div className="flex items-center gap-1">
+            {onPauseAlerts && (
+              <button
+                type="button"
+                onClick={onPauseAlerts}
+                className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#272a2d] hover:bg-[#37393d] text-[#ffd87f] border border-[#ffd87f]/30 transition-colors cursor-pointer"
+                title="Pause automatic signal popups"
+              >
+                {isAlertsPaused ? 'Resume' : 'Pause'}
+              </button>
+            )}
             <button
               onClick={onDismiss}
+              aria-label="Dismiss Alert"
               className="p-1 rounded-lg text-[#99907f] hover:text-[#fff8f1] hover:bg-[#272a2d] transition-colors cursor-pointer"
               title="Dismiss Alert"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
+        </div>
+
+        {/* Paper Trading Safety Badge (Requirement 10 & 11) */}
+        <div className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-[10px] font-mono text-amber-300 font-bold">
+          <span>DEMO SIGNAL — PAPER TRADING ONLY</span>
+          <span className="text-[9px] text-[#99907f]">No Real Money</span>
         </div>
 
         {/* Core Asset Details */}
@@ -189,16 +215,33 @@ export const AutoAlertPopupBanner: React.FC<AutoAlertPopupBannerProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 pt-1">
+          {onExecuteSignal && (
+            <button
+              type="button"
+              onClick={() => {
+                onExecuteSignal(signal);
+                onDismiss();
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-xs bg-emerald-400 hover:bg-emerald-300 text-[#091e14] shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.98] cursor-pointer"
+              title="Review Entry: Open deliberate confirmation flow with predefined TP1 and SL rules"
+            >
+              <Zap className="w-4 h-4 fill-current" />
+              <span>Review Setup ({signal.side})</span>
+            </button>
+          )}
+
           <button
+            type="button"
             onClick={() => onSelectAndTrade(signal)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs bg-[#00ff94] hover:bg-[#00e685] text-[#111417] shadow-lg shadow-[#00ff94]/20 transition-all active:scale-[0.98] cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs bg-[#272a2d] hover:bg-[#32363a] text-[#fff8f1] border border-[#37393d] transition-all active:scale-[0.98] cursor-pointer"
           >
-            <BarChart2 className="w-4 h-4" />
-            <span>View Chart & Trade {signal.symbol.split('/')[0]}</span>
-            <ArrowRight className="w-4 h-4 ml-0.5" />
+            <BarChart2 className="w-4 h-4 text-[#00ff94]" />
+            <span>Chart</span>
+            <ArrowRight className="w-3.5 h-3.5 ml-0.5 text-[#99907f]" />
           </button>
 
           <button
+            type="button"
             onClick={onDismiss}
             className="py-2.5 px-3 rounded-xl text-xs font-medium text-[#99907f] hover:text-[#fff8f1] hover:bg-[#272a2d] border border-[#272a2d] transition-colors cursor-pointer"
           >

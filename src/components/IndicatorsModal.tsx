@@ -25,6 +25,7 @@ interface IndicatorsModalProps {
   onToggleIndicator: (id: string) => void;
   onUpdateParams: (id: string, params: Record<string, number | string>) => void;
   onUpdateColor: (id: string, color: string) => void;
+  onResetDefaults?: () => void;
 }
 
 const CATEGORIES: { key: 'all' | IndicatorCategory; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -43,6 +44,7 @@ export const IndicatorsModal: React.FC<IndicatorsModalProps> = ({
   onToggleIndicator,
   onUpdateParams,
   onUpdateColor,
+  onResetDefaults,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | IndicatorCategory>('all');
@@ -50,7 +52,11 @@ export const IndicatorsModal: React.FC<IndicatorsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const activeMap = new Map(activeIndicators.map((a) => [a.indicatorId, a]));
+  const activeMap = new Map<string, ActiveIndicatorState>();
+  activeIndicators.forEach((a) => {
+    if (a.indicatorId) activeMap.set(a.indicatorId, a);
+    if (a.id) activeMap.set(a.id, a);
+  });
 
   const filteredIndicators = INDICATOR_CATALOG.filter((ind) => {
     const matchesCategory =
@@ -254,9 +260,21 @@ export const IndicatorsModal: React.FC<IndicatorsModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3 bg-[#191c1f] border-t border-[#272a2d] flex items-center justify-between text-xs">
-          <span className="text-[#99907f] text-[11px]">
-            💡 Indicators automatically update with real-time incoming tick data and timeframes
-          </span>
+          <div className="flex items-center gap-3">
+            {onResetDefaults && (
+              <button
+                onClick={onResetDefaults}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#272a2d] hover:bg-[#37393d] text-[#ffd87f] rounded-lg transition-colors cursor-pointer border border-[#37393d] font-bold text-[11px]"
+                title="Reset all indicators to default setup (EMA 9/21, Supertrend, CPR, Volume, RSI)"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset Defaults</span>
+              </button>
+            )}
+            <span className="hidden sm:inline text-[#99907f] text-[11px]">
+              💡 Indicators automatically update with real-time incoming tick data
+            </span>
+          </div>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-[#f6be16] hover:bg-[#ffd87f] text-[#0b0e11] font-bold rounded-lg transition-colors cursor-pointer"

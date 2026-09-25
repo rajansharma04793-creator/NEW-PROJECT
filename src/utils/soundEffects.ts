@@ -131,7 +131,56 @@ export function playSignalAlertSound(side: 'LONG' | 'SHORT' = 'LONG') {
 }
 
 /**
- * Uses Web Speech API to announce new signal alerts
+ * Plays a harmonic ascending chime for CPR Top Central Bullish Breakouts
+ */
+export function playBreakoutChime(side: 'BULLISH' | 'BEARISH' = 'BULLISH') {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const isBull = side === 'BULLISH';
+    const notes = isBull ? [587.33, 739.99, 880.0, 1174.66] : [880.0, 739.99, 587.33, 440.0];
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = isBull ? 'sine' : 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now + i * 0.07);
+      gain.gain.setValueAtTime(0.15, now + i * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.07);
+      osc.stop(now + i * 0.07 + 0.3);
+    });
+  } catch {}
+}
+
+/**
+ * Plays a celebratory double chime when Target 1 (TP1) is achieved / 50% locked
+ */
+export function playProfitHitChime() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    [1046.5, 1318.51, 1567.98].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.09);
+      gain.gain.setValueAtTime(0.2, now + i * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.09);
+      osc.stop(now + i * 0.09 + 0.4);
+    });
+  } catch {}
+}
+
+/**
+ * Uses Web Speech API to announce new signal alerts in English or Hindi
  */
 export function speakSignalAlert(text: string) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -148,7 +197,7 @@ export function speakSignalAlert(text: string) {
     const voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {
       const preferred = voices.find(
-        (v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha'))
+        (v) => (v.lang.startsWith('en') || v.lang.startsWith('hi')) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha'))
       ) || voices[0];
       if (preferred) utterance.voice = preferred;
     }

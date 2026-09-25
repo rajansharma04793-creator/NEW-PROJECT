@@ -213,21 +213,27 @@ export const LiquidityHeatmap: React.FC<LiquidityHeatmapProps> = ({
       className="relative w-full h-full bg-[#0e1114] select-none flex flex-col"
     >
       {/* Header Info */}
-      <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-[11px] font-mono bg-[#14171a]/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#272a2d] shadow-lg">
+      <div className="absolute top-2 left-3 z-10 flex flex-wrap items-center gap-2 text-[11px] font-mono bg-[#14171a]/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#272a2d] shadow-lg">
         <div className="flex items-center gap-1.5 text-[#f6be16] font-bold">
           <Flame className="w-3.5 h-3.5 text-[#f6be16] animate-pulse" />
-          <span>LIQUIDITY DEPTH HEATMAP & RESTING WALLS</span>
+          <span>LIQUIDITY CLUSTERS & WHALE DEPTH WALLS</span>
         </div>
         <div className="w-[1px] h-3.5 bg-[#272a2d]" />
         <span className="text-[#99907f]">
-          Hot Yellow = <span className="text-[#ffd87f] font-bold">High Density Wall</span>
+          Hot Yellow = <span className="text-[#ffd87f] font-bold">Whale Liquidity Pool</span>
         </span>
         <span className="text-[#99907f] hidden sm:inline">
-          Red Heat = <span className="text-[#ff3b4a] font-bold">Ask Resistance</span>
+          Red Heat = <span className="text-[#ff3b4a] font-bold">Ask Block</span>
         </span>
         <span className="text-[#99907f] hidden sm:inline">
-          Green Heat = <span className="text-[#00ff94] font-bold">Bid Support</span>
+          Green Heat = <span className="text-[#00ff94] font-bold">Bid Block</span>
         </span>
+
+        {/* Liquidation Hunter Tag */}
+        <div className="ml-auto hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#272a2d] border border-[#ff3b4a]/40 text-[10px] text-[#ff3b4a] font-bold">
+          <Eye className="w-3 h-3 text-[#ff3b4a]" />
+          <span>Liq Hunter Pools: ${(currentPrice * 0.985).toFixed(precision)} - ${(currentPrice * 1.015).toFixed(precision)}</span>
+        </div>
       </div>
 
       <canvas ref={canvasRef} className="w-full h-full block" />

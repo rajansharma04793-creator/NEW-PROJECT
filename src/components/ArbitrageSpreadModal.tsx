@@ -21,6 +21,7 @@ interface ArbitrageSpreadModalProps {
   currentPair: AssetPair;
   tickers: Record<AssetPair, TickerInfo>;
   onSelectPair?: (pair: AssetPair) => void;
+  onOpenQuantConsole?: () => void;
 }
 
 export const ArbitrageSpreadModal: React.FC<ArbitrageSpreadModalProps> = ({
@@ -29,6 +30,7 @@ export const ArbitrageSpreadModal: React.FC<ArbitrageSpreadModalProps> = ({
   currentPair,
   tickers,
   onSelectPair,
+  onOpenQuantConsole,
 }) => {
   const [selectedPair, setSelectedPair] = useState<AssetPair>(currentPair);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -201,6 +203,27 @@ export const ArbitrageSpreadModal: React.FC<ArbitrageSpreadModalProps> = ({
               </button>
             ))}
         </div>
+
+        {/* Quant Engine Quick Switch Banner */}
+        {onOpenQuantConsole && (
+          <div className="px-6 py-2.5 bg-emerald-950/40 border-b border-emerald-500/30 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-emerald-300">
+              <Zap className="w-4 h-4 text-emerald-400 fill-current animate-pulse shrink-0" />
+              <span>
+                <strong>Institutional Quant Engine:</strong> Ultra-low latency Binance → CoinDCX lead-lag arbitrage console with microsecond kill-switch.
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                onOpenQuantConsole();
+              }}
+              className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shrink-0 cursor-pointer shadow-sm transition-all"
+            >
+              Open Quant Console
+            </button>
+          </div>
+        )}
 
         {/* Top Summary Banner */}
         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#111417] border-b border-[#272a2d]">

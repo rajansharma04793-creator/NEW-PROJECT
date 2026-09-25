@@ -1,6 +1,6 @@
 {
   "name": "Lumina Trade - The Obsidian Terminal",
-  "description": "Institutional-grade crypto & commodities trading terminal with TradingView-style interactive drawing panel, comprehensive technical indicator suite (EMA ribbons, Supertrend, Bollinger, Keltner, Donchian, Parabolic SAR, Volume Profile VPVR, Fibonacci Retracements, MACD, RSI, Stochastics, Smart Money SMC), Chart & Order Flow Switchboard (Footprint cluster delta matrix, Liquidity Depth Heatmap, TPO Market Profile, DOM price ladder), multi-chart layout patterns, and conversational AI Chat Analyst for real-time BUY/SELL signals.",
+  "description": "Institutional-grade multi-asset trading terminal supporting Crypto, Precious Metals & Commodities (Gold, Silver, Oil, Copper), Forex (EUR/USD, GBP/USD, USD/INR, USD/JPY), and Global & Indian Stocks (NVDA, TSLA, AAPL, NIFTY 50, SPX 500, Reliance, TCS, HDFC Bank) with TradingView-style interactive drawing panel, Central Pivot Range (CPR) all-market trend scanner, comprehensive technical indicator suite, and real-time AI trading signals.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -10,6 +10,8 @@ interface RealTimePriceBarProps {
   onToggleCurrencyMode: () => void;
   coindcxLatency?: number;
   isCoinDCXLive?: boolean;
+  onResetPrices?: () => void;
+  isResettingPrices?: boolean;
 }
 
 export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
@@ -20,6 +22,8 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
   onToggleCurrencyMode,
   coindcxLatency = 42,
   isCoinDCXLive = true,
+  onResetPrices,
+  isResettingPrices = false,
 }) => {
   const btcTicker = tickers['BTC/USDT'] || {
     price: 77450.2,
@@ -51,6 +55,27 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
     inrChange24h: 0.5,
   };
 
+  const xagTicker = tickers['XAG/USDT'] || {
+    price: 31.85,
+    change24h: 1.45,
+    inrPrice: 3141.35,
+    inrChange24h: 1.45,
+  };
+
+  const eurTicker = tickers['EUR/USD'] || {
+    price: 1.0845,
+    change24h: 0.32,
+    inrPrice: 94.62,
+    inrChange24h: 0.32,
+  };
+
+  const usdinrTicker = tickers['USD/INR'] || {
+    price: 86.845,
+    change24h: 0.18,
+    inrPrice: 86.845,
+    inrChange24h: 0.18,
+  };
+
   const btcPriceUsd = btcTicker.price || 77450;
   const btcChangeUsd = btcTicker.change24h || 0;
   const btcPriceInr = btcTicker.inrPrice || btcTicker.spotInrPrice || btcPriceUsd * (btcTicker.usdtInrRate || 98.63);
@@ -62,16 +87,24 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
       id="coindcx-realtime-price-bar"
       className="flex items-center justify-between px-3 py-1 bg-[#14171a] border-b border-[#272a2d] text-xs font-mono select-none overflow-x-auto no-scrollbar gap-2 shrink-0 z-20"
     >
-      {/* Left: CoinDCX Real-Time Live Pairs Strip */}
-      <div className="flex items-center gap-3 shrink-0">
-        {/* Status Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#191c1f] border border-[#272a2d] text-[10px]">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff94] opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ff94]" />
-          </span>
-          <span className="text-[#00ff94] font-bold">CoinDCX Live</span>
-          <span className="text-[#99907f]">({coindcxLatency}ms)</span>
+      {/* Left: Real-Time Live Pairs Strip */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {/* Dual Status Indicators */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#191c1f] border border-[#272a2d] text-[10px]">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff94] opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#00ff94]" />
+            </span>
+            <span className="text-[#00ff94] font-bold">CoinDCX</span>
+          </div>
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#191c1f] border border-[#272a2d] text-[10px]" title="Investing.com & Global Interbank Live Feed for Forex, Gold & Silver">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#38bdf8] opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#38bdf8]" />
+            </span>
+            <span className="text-[#38bdf8] font-bold">Investing.com</span>
+          </div>
         </div>
 
         {/* 1. BTCUSDT Live Rate */}
@@ -84,21 +117,20 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
           }`}
           title="Click to view BTC/USDT live chart"
         >
-          <span className="font-bold text-[#f6be16]">BTCUSDT:</span>
+          <span className="font-bold text-[#f6be16]">BTC:</span>
           <span className="font-bold">${btcPriceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           <span
             className={`flex items-center text-[10px] font-bold px-1 rounded ${
               btcChangeUsd >= 0 ? 'bg-[#00ff94]/15 text-[#00ff94]' : 'bg-[#ff3b4a]/15 text-[#ff3b4a]'
             }`}
           >
-            {btcChangeUsd >= 0 ? <TrendingUp className="w-2.5 h-2.5 mr-0.5 inline" /> : <TrendingDown className="w-2.5 h-2.5 mr-0.5 inline" />}
             {btcChangeUsd >= 0 ? `+${btcChangeUsd.toFixed(2)}%` : `${btcChangeUsd.toFixed(2)}%`}
           </span>
         </button>
 
         <div className="w-[1px] h-3.5 bg-[#272a2d]" />
 
-        {/* 2. Gold Futures XAUUSDT Live Rate */}
+        {/* 2. Gold Futures XAU Live Rate (Investing.com) */}
         <button
           onClick={() => onSelectPair('XAU/USDT')}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded transition-all cursor-pointer ${
@@ -106,9 +138,9 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
               ? 'bg-[#272a2d] border border-[#f6be16]/40 text-[#fff8f1]'
               : 'hover:bg-[#272a2d]/60 text-[#e1e2e7]'
           }`}
-          title="Click to view CoinDCX Gold Futures XAU/USDT live chart"
+          title="Investing.com Live Feed: Gold Futures & Spot (XAU/USD)"
         >
-          <span className="font-bold text-[#eab308]">XAUUSDT:</span>
+          <span className="font-bold text-[#eab308]">🥇 GOLD:</span>
           <span className="font-bold">${xauTicker.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           <span
             className={`flex items-center text-[10px] font-bold px-1 rounded ${
@@ -121,44 +153,85 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
 
         <div className="w-[1px] h-3.5 bg-[#272a2d]" />
 
-        {/* 3. BTCINR Live Rate */}
+        {/* 3. Silver Perpetual XAG Live Rate (Investing.com) */}
         <button
-          onClick={() => {
-            onSelectPair('BTC/USDT');
-            if (currencyMode !== 'INR') onToggleCurrencyMode();
-          }}
+          onClick={() => onSelectPair('XAG/USDT')}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded transition-all cursor-pointer ${
-            currentPair === 'BTC/USDT' && currencyMode === 'INR'
+            currentPair === 'XAG/USDT'
               ? 'bg-[#272a2d] border border-[#f6be16]/40 text-[#fff8f1]'
               : 'hover:bg-[#272a2d]/60 text-[#e1e2e7]'
           }`}
-          title="Click to view BTC/INR rate on chart"
+          title="Investing.com Live Feed: Silver Perpetual (XAG/USD)"
         >
-          <span className="font-bold text-[#ffd87f]">BTCINR:</span>
-          <span className="font-bold">₹{btcPriceInr.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+          <span className="font-bold text-[#94a3b8]">🥈 SILVER:</span>
+          <span className="font-bold">${xagTicker.price.toFixed(3)}</span>
           <span
             className={`flex items-center text-[10px] font-bold px-1 rounded ${
-              btcChangeInr >= 0 ? 'bg-[#00ff94]/15 text-[#00ff94]' : 'bg-[#ff3b4a]/15 text-[#ff3b4a]'
+              xagTicker.change24h >= 0 ? 'bg-[#00ff94]/15 text-[#00ff94]' : 'bg-[#ff3b4a]/15 text-[#ff3b4a]'
             }`}
           >
-            {btcChangeInr >= 0 ? <TrendingUp className="w-2.5 h-2.5 mr-0.5 inline" /> : <TrendingDown className="w-2.5 h-2.5 mr-0.5 inline" />}
-            {btcChangeInr >= 0 ? `+${btcChangeInr.toFixed(2)}%` : `${btcChangeInr.toFixed(2)}%`}
+            {xagTicker.change24h >= 0 ? `+${xagTicker.change24h.toFixed(2)}%` : `${xagTicker.change24h.toFixed(2)}%`}
           </span>
         </button>
 
         <div className="w-[1px] h-3.5 bg-[#272a2d]" />
 
-        {/* 4. USDTINR Live Exchange Rate */}
+        {/* 4. EUR/USD Forex Rate (Investing.com) */}
+        <button
+          onClick={() => onSelectPair('EUR/USD')}
+          className={`hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded transition-all cursor-pointer ${
+            currentPair === 'EUR/USD'
+              ? 'bg-[#272a2d] border border-[#f6be16]/40 text-[#fff8f1]'
+              : 'hover:bg-[#272a2d]/60 text-[#e1e2e7]'
+          }`}
+          title="Investing.com Live Feed: EUR/USD Interbank Forex"
+        >
+          <span className="font-bold text-[#38bdf8]">💶 EUR/USD:</span>
+          <span className="font-bold">{eurTicker.price.toFixed(5)}</span>
+          <span
+            className={`flex items-center text-[10px] font-bold px-1 rounded ${
+              eurTicker.change24h >= 0 ? 'bg-[#00ff94]/15 text-[#00ff94]' : 'bg-[#ff3b4a]/15 text-[#ff3b4a]'
+            }`}
+          >
+            {eurTicker.change24h >= 0 ? `+${eurTicker.change24h.toFixed(2)}%` : `${eurTicker.change24h.toFixed(2)}%`}
+          </span>
+        </button>
+
+        <div className="w-[1px] h-3.5 bg-[#272a2d] hidden sm:block" />
+
+        {/* 5. USD/INR Forex Rate (Investing.com) */}
+        <button
+          onClick={() => onSelectPair('USD/INR')}
+          className={`hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded transition-all cursor-pointer ${
+            currentPair === 'USD/INR'
+              ? 'bg-[#272a2d] border border-[#f6be16]/40 text-[#fff8f1]'
+              : 'hover:bg-[#272a2d]/60 text-[#e1e2e7]'
+          }`}
+          title="Investing.com Live Feed: USD/INR Foreign Exchange"
+        >
+          <span className="font-bold text-[#fb923c]">🇮🇳 USD/INR:</span>
+          <span className="font-bold">₹{usdinrTicker.price.toFixed(4)}</span>
+          <span
+            className={`flex items-center text-[10px] font-bold px-1 rounded ${
+              usdinrTicker.change24h >= 0 ? 'bg-[#00ff94]/15 text-[#00ff94]' : 'bg-[#ff3b4a]/15 text-[#ff3b4a]'
+            }`}
+          >
+            {usdinrTicker.change24h >= 0 ? `+${usdinrTicker.change24h.toFixed(2)}%` : `${usdinrTicker.change24h.toFixed(2)}%`}
+          </span>
+        </button>
+
+        <div className="w-[1px] h-3.5 bg-[#272a2d] hidden md:block" />
+
+        {/* 6. USDTINR Live Exchange Rate */}
         <div
           className="flex items-center gap-1.5 px-2 py-0.5 bg-[#191c1f] rounded border border-[#272a2d]"
           title="CoinDCX Live USDT to INR exchange conversion rate"
         >
-          <span className="text-[#38bdf8] font-bold">USDTINR:</span>
+          <span className="text-[#38bdf8] font-bold">USDT:</span>
           <span className="text-[#fff8f1] font-bold">₹{usdtInrRate.toFixed(2)}</span>
-          <span className="text-[9px] text-[#99907f]">Live FX</span>
         </div>
 
-        {/* 5. Quick secondary coins ETH and SOL */}
+        {/* 7. Quick secondary coins ETH and SOL */}
         <button
           onClick={() => onSelectPair('ETH/USDT')}
           className={`hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded transition-all cursor-pointer ${
@@ -188,6 +261,22 @@ export const RealTimePriceBar: React.FC<RealTimePriceBarProps> = ({
 
       {/* Right: Currency Mode Switcher & Quick Reset */}
       <div className="flex items-center gap-2 shrink-0">
+        {onResetPrices && (
+          <button
+            onClick={onResetPrices}
+            disabled={isResettingPrices}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+              isResettingPrices
+                ? 'bg-[#f59e0b]/25 text-[#f59e0b] border-[#f59e0b]/40 animate-pulse'
+                : 'bg-[#2563eb]/20 hover:bg-[#2563eb]/35 text-[#60a5fa] hover:text-white border-[#2563eb]/40'
+            }`}
+            title="Purge all cached prices & re-sync 100% fresh live rates with Binance & CoinDCX exchanges"
+          >
+            <RefreshCw className={`w-2.5 h-2.5 ${isResettingPrices ? 'animate-spin text-[#f59e0b]' : ''}`} />
+            <span>{isResettingPrices ? 'Syncing...' : 'Reset All API Data'}</span>
+          </button>
+        )}
+
         <button
           onClick={onToggleCurrencyMode}
           className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#272a2d] hover:bg-[#37393d] text-[#f6be16] border border-[#37393d] text-[10px] font-bold cursor-pointer transition-colors"

@@ -276,22 +276,93 @@ export const INDICATOR_CATALOG: IndicatorDefinition[] = [
     color: '#00ff94',
     secondaryColor: '#ff3b4a',
   },
+  {
+    id: 'market_structure',
+    name: 'Market Structure (BOS & CHoCH)',
+    shortName: 'BOS / CHoCH',
+    category: 'smart_money',
+    description: 'Institutional Break of Structure & Change of Character scanner',
+    defaultParams: {},
+    overlay: true,
+    color: '#38bdf8',
+    secondaryColor: '#f43f5e',
+  },
+
+  // 6. ADVANCED QUANT & VOLATILITY
+  {
+    id: 'hma_9',
+    name: 'Hull Moving Average 9',
+    shortName: 'HMA 9',
+    category: 'trend',
+    description: 'Ultra-low lag responsive trend curve eliminating moving average delay',
+    defaultParams: { period: 9 },
+    overlay: true,
+    color: '#22d3ee',
+  },
+  {
+    id: 'hma_21',
+    name: 'Hull Moving Average 21',
+    shortName: 'HMA 21',
+    category: 'trend',
+    description: 'Smooth institutional trend baseline with zero lag',
+    defaultParams: { period: 21 },
+    overlay: true,
+    color: '#e879f9',
+  },
+  {
+    id: 'cmf_20',
+    name: 'Chaikin Money Flow (CMF 20)',
+    shortName: 'CMF (20)',
+    category: 'volume',
+    description: 'Measures institutional cashflow accumulation (>0) and distribution (<0)',
+    defaultParams: { period: 20 },
+    overlay: false,
+    color: '#10b981',
+    secondaryColor: '#ef4444',
+  },
+  {
+    id: 'chandelier_exit',
+    name: 'Chandelier Exit (ATR Trailing Stop)',
+    shortName: 'Chandelier Stop',
+    category: 'volatility',
+    description: 'Dynamic volatility trailing stops set 3x ATR from highest highs',
+    defaultParams: { period: 22, multiplier: 3 },
+    overlay: true,
+    color: '#00ff94',
+    secondaryColor: '#ff3b4a',
+  },
 ];
 
 // Calculation Functions
 
 export function calculateEMA(candles: Candle[], period: number): number[] {
+  if (!candles || candles.length === 0) return [];
   const k = 2 / (period + 1);
   const ema: number[] = [];
-  if (candles.length === 0) return ema;
 
-  let prev = candles[0].close;
-  ema.push(prev);
+  if (candles.length < period) {
+    let sum = 0;
+    for (let i = 0; i < candles.length; i++) {
+      sum += candles[i].close;
+      ema.push(sum / (i + 1));
+    }
+    return ema;
+  }
 
-  for (let i = 1; i < candles.length; i++) {
-    const current = candles[i].close * k + prev * (1 - k);
+  // Canonical institutional warm-up: Seed with SMA of the first 'period' candles
+  let initialSum = 0;
+  for (let i = 0; i < period; i++) {
+    initialSum += candles[i].close;
+    ema.push(initialSum / (i + 1));
+  }
+
+  let prevEma = initialSum / period;
+  ema[period - 1] = prevEma;
+
+  for (let i = period; i < candles.length; i++) {
+    const current = candles[i].close * k + prevEma * (1 - k);
     ema.push(current);
-    prev = current;
+    prevEma = current;
   }
   return ema;
 }
@@ -437,27 +508,32 @@ export function calculateSupertrend(
   const trend: ('bull' | 'bear')[] = [];
   const band: number[] = [];
 
+  if (!candles || candles.length === 0) return { trend, band };
+
   let inUptrend = true;
-  let upperBand = 0;
   let lowerBand = 0;
+  let upperBand = 0;
 
   for (let i = 0; i < candles.length; i++) {
     const c = candles[i];
     const currentAtr = atr[i] || (c.high - c.low);
-    const basicUpper = (c.high + c.low) / 2 + multiplier * currentAtr;
-    const basicLower = (c.high + c.low) / 2 - multiplier * currentAtr;
+    const hl2 = (c.high + c.low) / 2;
+    const basicUpper = hl2 + multiplier * currentAtr;
+    const basicLower = hl2 - multiplier * currentAtr;
 
     if (i === 0) {
-      upperBand = basicUpper;
       lowerBand = basicLower;
+      upperBand = basicUpper;
       trend.push('bull');
       band.push(lowerBand);
       continue;
     }
 
     const prevClose = candles[i - 1].close;
-    lowerBand = basicLower > lowerBand || prevClose < lowerBand ? basicLower : lowerBand;
-    upperBand = basicUpper < upperBand || prevClose > upperBand ? basicUpper : upperBand;
+    // Lower band can only rise during an uptrend (cannot step down)
+    lowerBand = prevClose > lowerBand ? Math.max(basicLower, lowerBand) : basicLower;
+    // Upper band can only fall during a downtrend (cannot step up)
+    upperBand = prevClose < upperBand ? Math.min(basicUpper, upperBand) : basicUpper;
 
     if (inUptrend) {
       if (c.close < lowerBand) {
@@ -481,6 +557,246 @@ export function calculateSupertrend(
   }
 
   return { trend, band };
+}
+
+// ==========================================
+// ADVANCED INSTITUTIONAL QUANT INDICATORS
+// ==========================================
+
+export function calculateWMA(values: number[], period: number): number[] {
+  const wma: number[] = [];
+  const denominator = (period * (period + 1)) / 2;
+
+  for (let i = 0; i < values.length; i++) {
+    if (i < period - 1) {
+      wma.push(values[i]);
+      continue;
+    }
+    let weightedSum = 0;
+    for (let j = 0; j < period; j++) {
+      weightedSum += values[i - period + 1 + j] * (j + 1);
+    }
+    wma.push(weightedSum / denominator);
+  }
+  return wma;
+}
+
+export function calculateHMA(candles: Candle[], period = 9): number[] {
+  if (!candles || candles.length === 0) return [];
+  const closes = candles.map((c) => c.close);
+  const halfPeriod = Math.max(1, Math.round(period / 2));
+  const sqrtPeriod = Math.max(1, Math.round(Math.sqrt(period)));
+
+  const wmaHalf = calculateWMA(closes, halfPeriod);
+  const wmaFull = calculateWMA(closes, period);
+
+  const diffSeries: number[] = [];
+  for (let i = 0; i < closes.length; i++) {
+    diffSeries.push(2 * (wmaHalf[i] ?? closes[i]) - (wmaFull[i] ?? closes[i]));
+  }
+
+  return calculateWMA(diffSeries, sqrtPeriod);
+}
+
+export function calculateCMF(candles: Candle[], period = 20): number[] {
+  const cmf: number[] = [];
+  if (!candles || candles.length === 0) return cmf;
+
+  const mfvList: number[] = [];
+  const volList: number[] = [];
+
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const range = c.high - c.low;
+    const vol = c.volume || 100;
+    const mfm = range === 0 ? 0 : ((c.close - c.low) - (c.high - c.close)) / range;
+    mfvList.push(mfm * vol);
+    volList.push(vol);
+  }
+
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      cmf.push(0);
+      continue;
+    }
+    const mfvSlice = mfvList.slice(i - period + 1, i + 1);
+    const volSlice = volList.slice(i - period + 1, i + 1);
+    const sumMfv = mfvSlice.reduce((a, b) => a + b, 0);
+    const sumVol = volSlice.reduce((a, b) => a + b, 0);
+    cmf.push(sumVol === 0 ? 0 : sumMfv / sumVol);
+  }
+  return cmf;
+}
+
+export interface RSIDivergencePoint {
+  index: number;
+  time: number;
+  type: 'bullish' | 'bearish';
+  price: number;
+  rsiValue: number;
+  description: string;
+}
+
+export function detectRSIDivergence(candles: Candle[], rsiValues: number[]): RSIDivergencePoint[] {
+  const divergences: RSIDivergencePoint[] = [];
+  if (!candles || candles.length < 15 || rsiValues.length < 15) return divergences;
+
+  const lookback = 3;
+  for (let i = lookback; i < candles.length - lookback; i++) {
+    const isPriceSwingLow =
+      candles[i].low <= candles[i - 1].low &&
+      candles[i].low <= candles[i - 2].low &&
+      candles[i].low <= candles[i + 1].low &&
+      candles[i].low <= candles[i + 2].low;
+
+    const isPriceSwingHigh =
+      candles[i].high >= candles[i - 1].high &&
+      candles[i].high >= candles[i - 2].high &&
+      candles[i].high >= candles[i + 1].high &&
+      candles[i].high >= candles[i + 2].high;
+
+    if (isPriceSwingLow) {
+      for (let prev = Math.max(0, i - 25); prev < i - 4; prev++) {
+        const isPrevLow =
+          candles[prev].low <= (candles[prev - 1]?.low ?? candles[prev].low) &&
+          candles[prev].low <= (candles[prev + 1]?.low ?? candles[prev].low);
+        if (isPrevLow) {
+          // Regular Bullish Divergence: Price Lower Low, but RSI Higher Low
+          if (candles[i].low < candles[prev].low && rsiValues[i] > rsiValues[prev] + 2 && rsiValues[i] < 45) {
+            divergences.push({
+              index: i,
+              time: candles[i].time,
+              type: 'bullish',
+              price: candles[i].low,
+              rsiValue: rsiValues[i],
+              description: `Bullish Divergence: Price lower low ($${candles[i].low}) with RSI higher low (${rsiValues[i].toFixed(1)} vs ${rsiValues[prev].toFixed(1)})`,
+            });
+            break;
+          }
+        }
+      }
+    }
+
+    if (isPriceSwingHigh) {
+      for (let prev = Math.max(0, i - 25); prev < i - 4; prev++) {
+        const isPrevHigh =
+          candles[prev].high >= (candles[prev - 1]?.high ?? candles[prev].high) &&
+          candles[prev].high >= (candles[prev + 1]?.high ?? candles[prev].high);
+        if (isPrevHigh) {
+          // Regular Bearish Divergence: Price Higher High, but RSI Lower High
+          if (candles[i].high > candles[prev].high && rsiValues[i] < rsiValues[prev] - 2 && rsiValues[i] > 55) {
+            divergences.push({
+              index: i,
+              time: candles[i].time,
+              type: 'bearish',
+              price: candles[i].high,
+              rsiValue: rsiValues[i],
+              description: `Bearish Divergence: Price higher high ($${candles[i].high}) with RSI lower high (${rsiValues[i].toFixed(1)} vs ${rsiValues[prev].toFixed(1)})`,
+            });
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return divergences;
+}
+
+export interface MarketStructureShift {
+  index: number;
+  time: number;
+  type: 'BOS_BULL' | 'BOS_BEAR' | 'CHOCH_BULL' | 'CHOCH_BEAR';
+  level: number;
+  description: string;
+}
+
+export function detectMarketStructure(candles: Candle[]): MarketStructureShift[] {
+  const shifts: MarketStructureShift[] = [];
+  if (!candles || candles.length < 20) return shifts;
+
+  const swingHighs: { idx: number; price: number; time: number }[] = [];
+  const swingLows: { idx: number; price: number; time: number }[] = [];
+
+  for (let i = 3; i < candles.length - 2; i++) {
+    if (
+      candles[i].high > candles[i - 1].high &&
+      candles[i].high > candles[i - 2].high &&
+      candles[i].high > candles[i + 1].high &&
+      candles[i].high > candles[i + 2].high
+    ) {
+      swingHighs.push({ idx: i, price: candles[i].high, time: candles[i].time });
+    }
+    if (
+      candles[i].low < candles[i - 1].low &&
+      candles[i].low < candles[i - 2].low &&
+      candles[i].low < candles[i + 1].low &&
+      candles[i].low < candles[i + 2].low
+    ) {
+      swingLows.push({ idx: i, price: candles[i].low, time: candles[i].time });
+    }
+  }
+
+  let lastTrend: 'bull' | 'bear' = 'bull';
+  for (let i = 5; i < candles.length; i++) {
+    const c = candles[i];
+    const prevHigh = swingHighs.filter((sh) => sh.idx < i).pop();
+    const prevLow = swingLows.filter((sl) => sl.idx < i).pop();
+
+    if (prevHigh && c.close > prevHigh.price && candles[i - 1].close <= prevHigh.price) {
+      const isChoch = lastTrend === 'bear';
+      shifts.push({
+        index: i,
+        time: c.time,
+        type: isChoch ? 'CHOCH_BULL' : 'BOS_BULL',
+        level: prevHigh.price,
+        description: isChoch
+          ? `Change of Character (Bullish CHoCH) broken at $${prevHigh.price}`
+          : `Break of Structure (Bullish BOS) expanded at $${prevHigh.price}`,
+      });
+      lastTrend = 'bull';
+    } else if (prevLow && c.close < prevLow.price && candles[i - 1].close >= prevLow.price) {
+      const isChoch = lastTrend === 'bull';
+      shifts.push({
+        index: i,
+        time: c.time,
+        type: isChoch ? 'CHOCH_BEAR' : 'BOS_BEAR',
+        level: prevLow.price,
+        description: isChoch
+          ? `Change of Character (Bearish CHoCH) broken at $${prevLow.price}`
+          : `Break of Structure (Bearish BOS) broken at $${prevLow.price}`,
+      });
+      lastTrend = 'bear';
+    }
+  }
+
+  return shifts.slice(-8);
+}
+
+export function calculateChandelierExit(
+  candles: Candle[],
+  period = 22,
+  multiplier = 3
+): { longStop: number[]; shortStop: number[] } {
+  const atr = calculateATR(candles, period);
+  const longStop: number[] = [];
+  const shortStop: number[] = [];
+
+  for (let i = 0; i < candles.length; i++) {
+    const slice = candles.slice(Math.max(0, i - period + 1), i + 1);
+    let highestHigh = -Infinity;
+    let lowestLow = Infinity;
+    slice.forEach((c) => {
+      if (c.high > highestHigh) highestHigh = c.high;
+      if (c.low < lowestLow) lowestLow = c.low;
+    });
+
+    const currentAtr = atr[i] || (candles[i].high - candles[i].low);
+    longStop.push(highestHigh - multiplier * currentAtr);
+    shortStop.push(lowestLow + multiplier * currentAtr);
+  }
+
+  return { longStop, shortStop };
 }
 
 export function calculateParabolicSAR(
@@ -864,6 +1180,35 @@ export function convertToHeikinAshi(candles: Candle[]): Candle[] {
 
 // 6. CPR (CENTRAL PIVOT RANGE) & ADVANCED ADX CALCULATIONS
 
+export interface DayCPRPeriod {
+  dateStr: string;
+  startIndex: number;
+  endIndex: number;
+  pivot: number;
+  tc: number;
+  bc: number;
+  tcActual: number;
+  bcActual: number;
+  cprWidth: number;
+  cprWidthPercent: number;
+  r1: number;
+  s1: number;
+  r2: number;
+  s2: number;
+  r3: number;
+  s3: number;
+  r4: number;
+  s4: number;
+  high: number;
+  low: number;
+  close: number;
+  isVirgin: boolean;
+  isNarrow: boolean;
+  isWide: boolean;
+  isAverage: boolean;
+  widthType: 'NARROW' | 'AVERAGE' | 'WIDE';
+}
+
 export interface CPRResult {
   pivot: number;
   tc: number;
@@ -874,67 +1219,216 @@ export interface CPRResult {
   cprWidthPercent: number;
   isNarrow: boolean;
   isWide: boolean;
+  isAverage?: boolean;
+  widthType?: 'NARROW' | 'AVERAGE' | 'WIDE';
   r1: number;
   s1: number;
   r2: number;
   s2: number;
   r3: number;
   s3: number;
+  r4?: number;
+  s4?: number;
   high: number;
   low: number;
   close: number;
+  isVirgin?: boolean;
+  relationship?: 'HIGHER_VALUE' | 'LOWER_VALUE' | 'INSIDE_CPR' | 'OUTSIDE_CPR' | 'OVERLAPPING_HIGHER' | 'OVERLAPPING_LOWER' | 'UNCHANGED';
+  historicalCPRs?: DayCPRPeriod[];
+  nextDayCPR?: {
+    pivot: number;
+    tc: number;
+    bc: number;
+    tcActual: number;
+    bcActual: number;
+    cprWidth: number;
+    cprWidthPercent: number;
+    widthType: 'NARROW' | 'AVERAGE' | 'WIDE';
+  };
 }
 
-export function calculateCPR(candles: Candle[], lookback = 24): CPRResult | null {
-  if (!candles || candles.length < 5) return null;
+export function calculateCPR(candles: Candle[], lookback = 24, timeframe = '15m'): CPRResult | null {
+  if (!candles || candles.length < 3) return null;
 
-  const slice = candles.slice(-Math.min(lookback, candles.length));
-  let high = -Infinity;
-  let low = Infinity;
+  // 1. Group candles by UTC calendar day (YYYY-MM-DD)
+  const dayGroups: { dateStr: string; candles: Candle[]; startIndex: number; endIndex: number }[] = [];
+  let currentDayStr = '';
+  let currentGroup: { dateStr: string; candles: Candle[]; startIndex: number; endIndex: number } | null = null;
 
-  slice.forEach((c) => {
-    if (c.high > high) high = c.high;
-    if (c.low < low) low = c.low;
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const ts = c.time > 10000000000 ? c.time : c.time * 1000;
+    const dateStr = !isNaN(ts) && ts > 0 ? new Date(ts).toISOString().slice(0, 10) : `day_${Math.floor(i / 24)}`;
+
+    if (dateStr !== currentDayStr) {
+      if (currentGroup) {
+        currentGroup.endIndex = i - 1;
+        dayGroups.push(currentGroup);
+      }
+      currentDayStr = dateStr;
+      currentGroup = { dateStr, candles: [c], startIndex: i, endIndex: i };
+    } else {
+      currentGroup?.candles.push(c);
+      if (currentGroup) currentGroup.endIndex = i;
+    }
+  }
+  if (currentGroup) {
+    currentGroup.endIndex = candles.length - 1;
+    dayGroups.push(currentGroup);
+  }
+
+  const computeLevels = (high: number, low: number, close: number) => {
+    const pivot = (high + low + close) / 3;
+    const bc = (high + low) / 2;
+    const tc = 2 * pivot - bc;
+    const tcActual = Math.max(tc, bc);
+    const bcActual = Math.min(tc, bc);
+    const cprWidth = Math.abs(tcActual - bcActual);
+    const cprWidthPercent = pivot > 0 ? (cprWidth / pivot) * 100 : 0;
+    const isNarrow = cprWidthPercent < 0.35;
+    const isWide = cprWidthPercent > 0.85;
+    const isAverage = !isNarrow && !isWide;
+    const widthType: 'NARROW' | 'AVERAGE' | 'WIDE' = isNarrow ? 'NARROW' : isWide ? 'WIDE' : 'AVERAGE';
+
+    const r1 = 2 * pivot - low;
+    const s1 = 2 * pivot - high;
+    const r2 = pivot + (high - low);
+    const s2 = pivot - (high - low);
+    const r3 = high + 2 * (pivot - low);
+    const s3 = low - 2 * (high - pivot);
+    const r4 = r3 + (r2 - r1);
+    const s4 = s3 - (s1 - s2);
+
+    return {
+      pivot,
+      tc,
+      bc,
+      tcActual,
+      bcActual,
+      cprWidth,
+      cprWidthPercent,
+      isNarrow,
+      isWide,
+      isAverage,
+      widthType,
+      r1,
+      s1,
+      r2,
+      s2,
+      r3,
+      s3,
+      r4,
+      s4,
+      high,
+      low,
+      close,
+    };
+  };
+
+  const historicalCPRs: DayCPRPeriod[] = [];
+  let primaryLevels: ReturnType<typeof computeLevels>;
+  let primaryVirgin = false;
+
+  // Case A: Multi-day session partitioning (real trading session CPR)
+  if (dayGroups.length >= 2) {
+    for (let k = 1; k < dayGroups.length; k++) {
+      const priorGroup = dayGroups[k - 1];
+      const curGroup = dayGroups[k];
+
+      let priorHigh = -Infinity;
+      let priorLow = Infinity;
+      priorGroup.candles.forEach((c) => {
+        if (c.high > priorHigh) priorHigh = c.high;
+        if (c.low < priorLow) priorLow = c.low;
+      });
+      const priorClose = priorGroup.candles[priorGroup.candles.length - 1].close;
+
+      const lvl = computeLevels(priorHigh, priorLow, priorClose);
+
+      // Check if price pierced CPR corridor during this period
+      const isVirgin = !curGroup.candles.some(
+        (c) => c.high >= lvl.bcActual && c.low <= lvl.tcActual
+      );
+
+      historicalCPRs.push({
+        dateStr: curGroup.dateStr,
+        startIndex: curGroup.startIndex,
+        endIndex: curGroup.endIndex,
+        ...lvl,
+        isVirgin,
+      });
+    }
+
+    const lastPeriod = historicalCPRs[historicalCPRs.length - 1];
+    primaryLevels = { ...lastPeriod };
+    primaryVirgin = lastPeriod.isVirgin;
+  } else {
+    // Case B: Single calendar day or short slice
+    // Use completed candles slice (excluding the live candle so CPR does not flicker per tick)
+    const nonLiveCandles = candles.length > 5 ? candles.slice(0, -1) : candles;
+    const sessionSize = Math.min(nonLiveCandles.length, Math.max(12, lookback));
+    const priorSlice = nonLiveCandles.slice(-sessionSize);
+
+    let priorHigh = -Infinity;
+    let priorLow = Infinity;
+    priorSlice.forEach((c) => {
+      if (c.high > priorHigh) priorHigh = c.high;
+      if (c.low < priorLow) priorLow = c.low;
+    });
+    const priorClose = priorSlice[priorSlice.length - 1].close;
+
+    primaryLevels = computeLevels(priorHigh, priorLow, priorClose);
+    const lastCandle = candles[candles.length - 1];
+    primaryVirgin = !(lastCandle.high >= primaryLevels.bcActual && lastCandle.low <= primaryLevels.tcActual);
+  }
+
+  // 2-Day Relationship
+  let relationship: CPRResult['relationship'] = 'UNCHANGED';
+  if (historicalCPRs.length >= 2) {
+    const today = historicalCPRs[historicalCPRs.length - 1];
+    const yest = historicalCPRs[historicalCPRs.length - 2];
+
+    if (today.bcActual > yest.tcActual) {
+      relationship = 'HIGHER_VALUE';
+    } else if (today.tcActual < yest.bcActual) {
+      relationship = 'LOWER_VALUE';
+    } else if (today.tcActual <= yest.tcActual && today.bcActual >= yest.bcActual) {
+      relationship = 'INSIDE_CPR';
+    } else if (today.tcActual >= yest.tcActual && today.bcActual <= yest.bcActual) {
+      relationship = 'OUTSIDE_CPR';
+    } else if (today.tcActual > yest.tcActual && today.bcActual > yest.bcActual) {
+      relationship = 'OVERLAPPING_HIGHER';
+    } else if (today.tcActual < yest.tcActual && today.bcActual < yest.bcActual) {
+      relationship = 'OVERLAPPING_LOWER';
+    }
+  }
+
+  // Next Day CPR projection based on today's active candles
+  const currentDayCandles = dayGroups[dayGroups.length - 1]?.candles || candles;
+  let todayHigh = -Infinity;
+  let todayLow = Infinity;
+  currentDayCandles.forEach((c) => {
+    if (c.high > todayHigh) todayHigh = c.high;
+    if (c.low < todayLow) todayLow = c.low;
   });
-
-  const lastCandle = candles[candles.length - 1];
-  const close = lastCandle.close;
-
-  const pivot = (high + low + close) / 3;
-  const bc = (high + low) / 2;
-  const tc = (pivot - bc) + pivot;
-
-  const tcActual = Math.max(tc, bc);
-  const bcActual = Math.min(tc, bc);
-  const cprWidth = Math.abs(tcActual - bcActual);
-  const cprWidthPercent = pivot > 0 ? (cprWidth / pivot) * 100 : 0;
-
-  const r1 = 2 * pivot - low;
-  const s1 = 2 * pivot - high;
-  const r2 = pivot + (high - low);
-  const s2 = pivot - (high - low);
-  const r3 = high + 2 * (pivot - low);
-  const s3 = low - 2 * (high - pivot);
+  const todayClose = candles[candles.length - 1].close;
+  const nextLvl = computeLevels(todayHigh, todayLow, todayClose);
 
   return {
-    pivot,
-    tc,
-    bc,
-    tcActual,
-    bcActual,
-    cprWidth,
-    cprWidthPercent,
-    isNarrow: cprWidthPercent < 0.35,
-    isWide: cprWidthPercent > 1.2,
-    r1,
-    s1,
-    r2,
-    s2,
-    r3,
-    s3,
-    high,
-    low,
-    close,
+    ...primaryLevels,
+    isVirgin: primaryVirgin,
+    relationship,
+    historicalCPRs,
+    nextDayCPR: {
+      pivot: nextLvl.pivot,
+      tc: nextLvl.tc,
+      bc: nextLvl.bc,
+      tcActual: nextLvl.tcActual,
+      bcActual: nextLvl.bcActual,
+      cprWidth: nextLvl.cprWidth,
+      cprWidthPercent: nextLvl.cprWidthPercent,
+      widthType: nextLvl.widthType,
+    },
   };
 }
 
@@ -1147,6 +1641,18 @@ export function evaluateCPRConfluenceStrategy(
 
   const { tcActual: tc, bcActual: bc, pivot, r1, s1, r2, s2 } = cpr;
 
+  const precision = price < 0.001 ? 8 : price < 1 ? 5 : price < 50 ? 4 : 2;
+  const fmt = (p: number) => Number(p.toFixed(precision));
+
+  // Virgin CPR Detection: Previous 20 candles never intersected the CPR corridor
+  const isVirginCPR = !candles.slice(-20, -1).some(c => c.high >= bc && c.low <= tc);
+
+  // Volume Surge Confirmation
+  const recentVols = candles.slice(-20).map(c => c.volume || 1);
+  const avgVol = recentVols.reduce((a, b) => a + b, 0) / (recentVols.length || 1);
+  const lastVol = candles[candles.length - 1]?.volume || avgVol;
+  const isVolumeSurging = lastVol >= avgVol * 1.2;
+
   // 1. CPR Condition
   const isAboveTC = price > tc;
   const isBelowBC = price < bc;
@@ -1156,57 +1662,56 @@ export function evaluateCPRConfluenceStrategy(
   let cprDetails = '';
   if (isTrappedInCPR) {
     cprPassed = false;
-    cprDetails = `Price ($${price.toFixed(2)}) trapped inside CPR ($${bc.toFixed(2)} - $${tc.toFixed(2)}) → Consolidation / No Trade Zone`;
+    cprDetails = `Price ($${fmt(price)}) trapped inside CPR ($${fmt(bc)} - $${fmt(tc)}) → Consolidation / No Trade Zone`;
   } else if (isAboveTC) {
     cprPassed = true;
-    cprDetails = `Price ($${price.toFixed(2)}) is above Top Central ($${tc.toFixed(2)}) → Bullish Context confirmed`;
+    cprDetails = `Price ($${fmt(price)}) > Top Central ($${fmt(tc)})${isVirginCPR ? ' [Virgin CPR Breakout ⚡]' : ''} → Bullish Context`;
   } else {
     cprPassed = true;
-    cprDetails = `Price ($${price.toFixed(2)}) is below Bottom Central ($${bc.toFixed(2)}) → Bearish Context confirmed`;
+    cprDetails = `Price ($${fmt(price)}) < Bottom Central ($${fmt(bc)})${isVirginCPR ? ' [Virgin CPR Breakdown ⚡]' : ''} → Bearish Context`;
   }
 
   // 2. 9 EMA & 26 EMA Condition
   const ema9Above26 = ema9 > ema26;
   const ema9Below26 = ema9 < ema26;
-  const emaNearPullback = Math.abs(price - ema9) / price < 0.008;
 
   let emaPassed = false;
   let emaDetails = '';
   if (isAboveTC && ema9Above26) {
     emaPassed = true;
-    emaDetails = `9 EMA ($${ema9.toFixed(2)}) > 26 EMA ($${ema26.toFixed(2)}) with upward trajectory (Bullish)`;
+    emaDetails = `9 EMA ($${fmt(ema9)}) > 26 EMA ($${fmt(ema26)}) with upward trajectory (Bullish)`;
   } else if (isBelowBC && ema9Below26) {
     emaPassed = true;
-    emaDetails = `9 EMA ($${ema9.toFixed(2)}) < 26 EMA ($${ema26.toFixed(2)}) with downward rejection (Bearish)`;
+    emaDetails = `9 EMA ($${fmt(ema9)}) < 26 EMA ($${fmt(ema26)}) with downward rejection (Bearish)`;
   } else {
     emaPassed = false;
-    emaDetails = `EMA divergence inconsistent with CPR breakout context`;
+    emaDetails = `EMA trend alignment inconsistent with CPR breakout`;
   }
 
-  // 3. ADX 14 Trend Strength Condition (Must be > 20 and rising)
+  // 3. ADX 14 Trend Strength Condition (Must be >= 20 and rising or strong)
   let adxPassed = false;
   let adxDetails = '';
   if (adx >= 20 && adxRising) {
     adxPassed = true;
-    adxDetails = `ADX is ${adx.toFixed(1)} (> 20) and rising → Strong trending conditions validated`;
+    adxDetails = `ADX is ${adx.toFixed(1)} (>= 20) & rising → High directional velocity confirmed`;
   } else if (adx >= 20) {
     adxPassed = true;
-    adxDetails = `ADX is ${adx.toFixed(1)} (> 20) → Sufficient trend velocity`;
+    adxDetails = `ADX is ${adx.toFixed(1)} (>= 20) → Sufficient trend velocity`;
   } else {
     adxPassed = false;
-    adxDetails = `ADX is ${adx.toFixed(1)} (< 20) → Discarded due to sideways chop / whipsaw risk`;
+    adxDetails = `ADX is ${adx.toFixed(1)} (< 20) → Sideways compression / whipsaw risk`;
   }
 
-  // 4. RSI 14 Condition (50-70 for Long, 30-50 for Short, avoid extremes)
+  // 4. RSI 14 Condition (50-72 for Long, 28-50 for Short)
   let rsiPassed = false;
   let rsiDetails = '';
   if (isAboveTC) {
     if (rsi >= 50 && rsi <= 72) {
       rsiPassed = true;
-      rsiDetails = `RSI is ${rsi.toFixed(1)} (Bullish Momentum band 50-70)`;
+      rsiDetails = `RSI is ${rsi.toFixed(1)} (Bullish momentum corridor 50-72)`;
     } else if (rsi > 72) {
       rsiPassed = false;
-      rsiDetails = `RSI is ${rsi.toFixed(1)} (Overbought > 70) → Buying high risk`;
+      rsiDetails = `RSI is ${rsi.toFixed(1)} (Overbought > 72) → Excessive risk of pullback`;
     } else {
       rsiPassed = false;
       rsiDetails = `RSI is ${rsi.toFixed(1)} (< 50) → Insufficient upward momentum`;
@@ -1214,22 +1719,22 @@ export function evaluateCPRConfluenceStrategy(
   } else if (isBelowBC) {
     if (rsi >= 28 && rsi <= 50) {
       rsiPassed = true;
-      rsiDetails = `RSI is ${rsi.toFixed(1)} (Bearish Momentum band 30-50)`;
+      rsiDetails = `RSI is ${rsi.toFixed(1)} (Bearish momentum corridor 28-50)`;
     } else if (rsi < 28) {
       rsiPassed = false;
-      rsiDetails = `RSI is ${rsi.toFixed(1)} (Oversold < 30) → Selling low risk`;
+      rsiDetails = `RSI is ${rsi.toFixed(1)} (Oversold < 28) → Excessive risk of short squeeze`;
     } else {
       rsiPassed = false;
       rsiDetails = `RSI is ${rsi.toFixed(1)} (> 50) → Downside momentum unconfirmed`;
     }
   } else {
-    rsiDetails = `RSI is ${rsi.toFixed(1)} in consolidation`;
+    rsiDetails = `RSI is ${rsi.toFixed(1)} inside CPR range`;
   }
 
   // 5. ATR 14 Risk & Targets Calculation
   const slDistance = 1.5 * atr;
   const tpDistance = 3.0 * atr;
-  const atrDetails = `14 ATR is $${atr.toFixed(2)}. SL = 1.5x ATR ($${slDistance.toFixed(2)}), TP = 3.0x ATR ($${tpDistance.toFixed(2)}) yielding strict 1:2 R:R`;
+  const atrDetails = `14 ATR is $${fmt(atr)}. SL = 1.5x ATR ($${fmt(slDistance)}), TP = 3.0x ATR ($${fmt(tpDistance)}) yielding strict 1:2 R:R`;
 
   const checklist = {
     cprCondition: { passed: cprPassed && !isTrappedInCPR, details: cprDetails },
@@ -1251,6 +1756,8 @@ export function evaluateCPRConfluenceStrategy(
 
   let action: 'BUY' | 'SELL' | 'NO_TRADE' = 'NO_TRADE';
   let confidence = Math.round(50 + (passCount / 4) * 44);
+  if (isVirginCPR) confidence = Math.min(96, confidence + 5);
+  if (isVolumeSurging) confidence = Math.min(97, confidence + 4);
 
   if (isTrappedInCPR) {
     action = 'NO_TRADE';
@@ -1266,15 +1773,16 @@ export function evaluateCPRConfluenceStrategy(
   let tradeLevels = undefined;
   if (action === 'BUY') {
     const entry = price;
-    const stopLoss = Number((price - slDistance).toFixed(2));
-    const target1 = Number((price + tpDistance).toFixed(2));
-    const target2 = Number((Math.max(price + tpDistance * 1.5, r2)).toFixed(2));
+    // Structural stop beyond CPR TC or 1.5x ATR, whichever is safer
+    const stopLoss = fmt(Math.min(price - slDistance, tc * 0.998));
+    const target1 = fmt(Math.max(price + tpDistance, r1));
+    const target2 = fmt(Math.max(price + tpDistance * 1.6, r2));
     const riskPercent = Number(((price - stopLoss) / price * 100).toFixed(2));
     const rewardPercent = Number(((target1 - price) / price * 100).toFixed(2));
 
     tradeLevels = {
       entry,
-      entryRange: [Number((entry * 0.998).toFixed(2)), Number((entry * 1.002).toFixed(2))] as [number, number],
+      entryRange: [fmt(entry * 0.998), fmt(entry * 1.002)] as [number, number],
       stopLoss,
       target1,
       target2,
@@ -1284,15 +1792,16 @@ export function evaluateCPRConfluenceStrategy(
     };
   } else if (action === 'SELL') {
     const entry = price;
-    const stopLoss = Number((price + slDistance).toFixed(2));
-    const target1 = Number((price - tpDistance).toFixed(2));
-    const target2 = Number((Math.min(price - tpDistance * 1.5, s2)).toFixed(2));
+    // Structural stop beyond CPR BC or 1.5x ATR, whichever is safer
+    const stopLoss = fmt(Math.max(price + slDistance, bc * 1.002));
+    const target1 = fmt(Math.min(price - tpDistance, s1));
+    const target2 = fmt(Math.min(price - tpDistance * 1.6, s2));
     const riskPercent = Number(((stopLoss - price) / price * 100).toFixed(2));
     const rewardPercent = Number(((price - target1) / price * 100).toFixed(2));
 
     tradeLevels = {
       entry,
-      entryRange: [Number((entry * 0.998).toFixed(2)), Number((entry * 1.002).toFixed(2))] as [number, number],
+      entryRange: [fmt(entry * 0.998), fmt(entry * 1.002)] as [number, number],
       stopLoss,
       target1,
       target2,
@@ -1304,13 +1813,13 @@ export function evaluateCPRConfluenceStrategy(
 
   let reason = '';
   if (action === 'BUY') {
-    reason = `🚀 **BULLISH CPR CONFLUENCE**: Price is trading above Top Central ($${tc.toFixed(2)}) with 9 EMA above 26 EMA. ADX is ${adx.toFixed(1)} (${adxRising ? 'rising trend' : 'trending'}) and RSI is ${rsi.toFixed(1)} in optimal momentum territory.`;
+    reason = `🚀 **ADVANCED CPR CONFLUENCE**: Price trading above Top Central ($${fmt(tc)})${isVirginCPR ? ' with Virgin CPR breakout' : ''} + 9 EMA > 26 EMA alignment. ADX is ${adx.toFixed(1)} (${adxRising ? 'surging' : 'steady'}) & RSI is ${rsi.toFixed(1)}${isVolumeSurging ? ' with institutional volume surge' : ''}.`;
   } else if (action === 'SELL') {
-    reason = `🔻 **BEARISH CPR CONFLUENCE**: Price broke below Bottom Central ($${bc.toFixed(2)}) with 9 EMA below 26 EMA downward slope. ADX is ${adx.toFixed(1)} and RSI is ${rsi.toFixed(1)} confirming downside drive.`;
+    reason = `🔻 **ADVANCED CPR BREAKDOWN**: Price rejected below Bottom Central ($${fmt(bc)})${isVirginCPR ? ' with Virgin CPR magnet breakdown' : ''} + 9 EMA < 26 EMA cascade. ADX is ${adx.toFixed(1)} & RSI is ${rsi.toFixed(1)}${isVolumeSurging ? ' with institutional volume surge' : ''}.`;
   } else if (isTrappedInCPR) {
-    reason = `⏸️ **CONSOLIDATION FILTER (NO TRADE)**: Price ($${price.toFixed(2)}) is inside the CPR band ($${bc.toFixed(2)} - $${tc.toFixed(2)}). Algorithmic rule mandates standing aside until breakout occurs.`;
+    reason = `⏸️ **CONSOLIDATION FILTER (NO TRADE)**: Price ($${fmt(price)}) is inside the CPR corridor ($${fmt(bc)} - $${fmt(tc)}). Institutional rules enforce standing aside until explicit expansion.`;
   } else {
-    reason = `⏳ **CONFLUENCE INCOMPLETE**: Partial signals detected (${passCount}/4 criteria met). Awaiting synchronous ADX trend confirmation and RSI alignment.`;
+    reason = `⏳ **CONFLUENCE INCOMPLETE**: Criteria partially satisfied (${passCount}/4 criteria met). Awaiting synchronous ADX trend acceleration and RSI band alignment.`;
   }
 
   return {

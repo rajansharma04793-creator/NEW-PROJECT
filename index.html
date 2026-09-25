@@ -1,10 +1,65 @@
 <!doctype html>
 <html lang="en" class="dark" style="background-color: #111417; color: #e1e2e7; color-scheme: dark;">
   <head>
+    <script>
+      // Gracefully prevent benign Vite HMR WebSocket disconnection errors from bubbling as unhandled rejections or console spam
+      (function() {
+        var isBenign = function(str) {
+          if (!str) return false;
+          var s = String(str).toLowerCase();
+          return s.indexOf('websocket closed without opened') !== -1 ||
+                 s.indexOf('failed to connect to websocket') !== -1 ||
+                 (s.indexOf('vite') !== -1 && s.indexOf('websocket') !== -1);
+        };
+
+        var origError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var hasBenign = args.some(function(arg) {
+            var msg = (arg && arg.message) || String(arg);
+            return isBenign(msg);
+          });
+          if (!hasBenign) {
+            origError.apply(console, args);
+          }
+        };
+
+        var origWarn = console.warn;
+        console.warn = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var hasBenign = args.some(function(arg) {
+            var msg = (arg && arg.message) || String(arg);
+            return isBenign(msg);
+          });
+          if (!hasBenign) {
+            origWarn.apply(console, args);
+          }
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason;
+          var reasonStr = reason ? (reason.message || String(reason)) : '';
+          if (isBenign(reasonStr)) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('error', function(event) {
+          var msg = event.message || (event.error && event.error.message) || '';
+          if (isBenign(msg)) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Lumina Trade - The Obsidian Terminal</title>
-    <meta name="description" content="Institutional-grade liquidity. Zero compromise. The Obsidian Terminal." />
+    <meta name="description" content="Institutional-grade multi-asset trading terminal supporting Crypto, Precious Metals &amp; Commodities (Gold, Silver, Oil, Copper), Forex (EUR/USD, GBP/USD, USD/INR, USD/JPY), and Global &amp; Indian Stocks (NVDA, TSLA, AAPL, NIFTY 50, SPX 500, Reliance, TCS, HDFC Bank) with TradingView-style interactive drawing panel, Central Pivot Range (CPR) all-market trend scanner, comprehensive technical indicator suite, and real-time AI trading signals." />
     
     <!-- PWA & Mobile App Support -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -21,7 +76,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <meta property="og:title" content="Lumina Trade - The Obsidian Terminal" />
-    <meta property="og:description" content="Institutional-grade crypto & assets trading terminal." />
+    <meta property="og:description" content="Institutional-grade multi-asset trading terminal supporting Crypto, Precious Metals &amp; Commodities (Gold, Silver, Oil, Copper), Forex (EUR/USD, GBP/USD, USD/INR, USD/JPY), and Global &amp; Indian Stocks (NVDA, TSLA, AAPL, NIFTY 50, SPX 500, Reliance, TCS, HDFC Bank) with TradingView-style interactive drawing panel, Central Pivot Range (CPR) all-market trend scanner, comprehensive technical indicator suite, and real-time AI trading signals." />
     <meta property="og:type" content="website" />
     <style>
       html, body {

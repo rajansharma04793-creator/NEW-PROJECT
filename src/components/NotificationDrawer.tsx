@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppNotification, AssetPair } from '../types';
 import { Bell, BellRing, X, CheckCheck, Sparkles, ShoppingBag, ShieldCheck, ArrowRight } from 'lucide-react';
 
@@ -21,6 +21,19 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 }) => {
   const [filter, setFilter] = useState<'all' | 'price_alert' | 'ai_signal' | 'order'>('all');
 
+  // Accessible Escape key listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const filteredNotifications = notifications.filter((n) => {
@@ -34,8 +47,18 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs font-hanken animate-in fade-in duration-150">
-      <div className="w-full max-w-sm bg-[#111417] h-full border-l border-[#272a2d] shadow-2xl flex flex-col justify-between">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs font-hanken animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <aside
+        id="notifications-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notifications-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm bg-[#111417] h-full border-l border-[#272a2d] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-200"
+      >
         {/* Header */}
         <div>
           <div className="p-4 bg-[#191c1f] border-b border-[#272a2d] flex items-center justify-between">
@@ -43,8 +66,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               <div className="p-1 rounded bg-[#f6be16]/15 text-[#f6be16]">
                 <BellRing className="w-4 h-4" />
               </div>
-              <h3 className="font-bold text-[#fff8f1] text-sm flex items-center gap-2">
-                Notifications
+              <h3 id="notifications-title" className="font-bold text-[#fff8f1] text-sm flex items-center gap-2">
+                Notification Center
                 {unreadCount > 0 && (
                   <span className="text-[10px] font-mono px-1.5 py-0.2 bg-[#f6be16] text-[#111417] font-bold rounded-full">
                     {unreadCount}
@@ -175,13 +198,20 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                       </span>
                     </div>
 
-                    <span className="text-[10px] text-[#99907f] font-mono shrink-0">
-                      {new Date(n.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isAi && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-[#ffd87f]/15 text-[#ffd87f] border border-[#ffd87f]/30">
+                          Synthetic / Simulation Signal
+                        </span>
+                      )}
+                      <span className="text-[10px] text-[#99907f] font-mono">
+                        {new Date(n.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-[11px] leading-relaxed text-[#d0c5b3] font-mono mt-1">
@@ -237,7 +267,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
             </button>
           )}
         </div>
-      </div>
+      </aside>
     </div>
   );
 };

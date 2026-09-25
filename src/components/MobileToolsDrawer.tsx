@@ -21,6 +21,13 @@ import {
   Smartphone,
   Download,
   Target,
+  Compass,
+  Globe,
+  Bell,
+  Calculator,
+  Key,
+  ShieldCheck,
+  GraduationCap,
 } from 'lucide-react';
 
 interface MobileToolsDrawerProps {
@@ -46,10 +53,77 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const quickLaunchTools = [
+    {
+      id: 'market_overview',
+      name: 'Market Hub',
+      desc: 'Gold, Silver, Forex & Indices',
+      icon: Globe,
+      color: 'text-[#10b981]',
+      badge: 'Hub',
+    },
+    {
+      id: 'agent_deliberation',
+      name: '5-Agent Desk',
+      desc: 'Scout, Analyst, News, Validator & Risk',
+      icon: ShieldCheck,
+      color: 'text-[#60a5fa]',
+      badge: '1:2+ RR',
+    },
+    {
+      id: 'trade_learning',
+      name: '5-Agent Tour',
+      desc: 'Interactive Guide & TP/SL Clarification',
+      icon: GraduationCap,
+      color: 'text-[#ffd87f]',
+      badge: 'Walkthrough',
+    },
+    {
+      id: 'copilot',
+      name: 'AI Copilot',
+      desc: 'Live Market Intelligence Chat',
+      icon: BrainCircuit,
+      color: 'text-[#00ff94]',
+      badge: 'GPT-4o',
+    },
+    {
+      id: 'alerts',
+      name: 'Price Alerts',
+      desc: 'Real-time push notifications',
+      icon: Bell,
+      color: 'text-[#f6be16]',
+      badge: 'Live',
+    },
+    {
+      id: 'portfolio',
+      name: 'Portfolio',
+      desc: '$100k Balance & Stats',
+      icon: Wallet,
+      color: 'text-[#ffd87f]',
+      badge: 'Wallet',
+    },
+  ];
+
   const toolCategories = [
     {
-      title: 'Strategy & Algorithmic Engines',
+      title: 'Strategy & Execution Tools',
       tools: [
+        {
+          id: 'smart_entry',
+          name: 'Smart Entry Timing Radar (Kab Entry Lu?)',
+          desc: 'Optimal entry zone, pullback levels & 1-click execution blueprint',
+          icon: Zap,
+          color: 'text-[#ffd87f]',
+          badge: '⚡ Timing',
+        },
+        {
+          id: 'cpr_scanner',
+          name: 'CPR Market Trend Scanner (All Stocks/Crypto)',
+          desc: 'Central Pivot Range multi-asset breakout & range screener',
+          icon: Compass,
+          color: 'text-[#00ff94]',
+          badge: 'CPR Hot',
+        },
         {
           id: 'strategy_manager',
           name: 'Strategy Manager Dashboard',
@@ -149,6 +223,14 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
           badge: 'Risk',
         },
         {
+          id: 'pip_calculator',
+          name: 'Pip & Forex / Commodities Value Calc',
+          desc: 'Precise pip step & lot size sizing',
+          icon: Calculator,
+          color: 'text-[#38bdf8]',
+          badge: 'Pips',
+        },
+        {
           id: 'backtester',
           name: 'Strategy Backtester Engine',
           desc: 'Historical win-rate & Sharpe metrics',
@@ -178,6 +260,14 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
       title: 'Signals & Integrations',
       tools: [
         {
+          id: 'auto_alerts',
+          name: 'Auto Background Scanner & Sound Alerts',
+          desc: 'RSI, MACD & EMA automated scans',
+          icon: BellRing,
+          color: 'text-[#00ff94]',
+          badge: 'Scanner',
+        },
+        {
           id: 'webhooks',
           name: 'Discord & Telegram Webhooks',
           desc: 'Automated trade alert dispatchers',
@@ -193,6 +283,14 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
           color: 'text-[#38bdf8]',
           badge: 'Voice',
         },
+        {
+          id: 'api_settings',
+          name: 'API Key & Webhook Configuration',
+          desc: 'Connect CoinDCX, Binance, Telegram keys',
+          icon: Key,
+          color: 'text-[#ffd87f]',
+          badge: 'API',
+        },
       ],
     },
   ];
@@ -203,9 +301,9 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
       <div className="flex-1" onClick={onClose} />
 
       {/* Drawer Content */}
-      <div className="w-full max-h-[85vh] bg-[#14171a] border-t border-[#2b2f36] rounded-t-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
+      <div className="w-full max-h-[88vh] bg-[#14171a] border-t border-[#2b2f36] rounded-t-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
         {/* Drawer Header */}
-        <div className="px-5 py-4 border-b border-[#272a2d] bg-[#111417] flex items-center justify-between">
+        <div className="px-5 py-3.5 border-b border-[#272a2d] bg-[#111417] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-lg bg-[#00ff94]/15 border border-[#00ff94]/30 text-[#00ff94]">
               <Layers className="w-5 h-5" />
@@ -229,7 +327,7 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
         </div>
 
         {/* Quick Top Toggle Bar */}
-        <div className="px-5 py-2.5 bg-[#181c20] border-b border-[#272a2d] flex items-center justify-between font-mono text-xs gap-2">
+        <div className="px-4 py-2 bg-[#181c20] border-b border-[#272a2d] flex items-center justify-between font-mono text-xs gap-2 shrink-0">
           {onOpenInstallModal && (
             <button
               onClick={() => {
@@ -259,7 +357,37 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
         </div>
 
         {/* Scrollable Tool List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Quick Launch Cards Grid */}
+          <div>
+            <h3 className="text-[11px] font-mono font-bold text-[#8e9099] uppercase tracking-wider px-1 mb-2">
+              Quick Launch
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              {quickLaunchTools.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      onOpenModal(t.id);
+                      onClose();
+                    }}
+                    className="p-2.5 rounded-xl bg-[#1c2024] hover:bg-[#252a30] active:bg-[#2b3038] border border-[#2b2f36] flex items-center gap-2.5 text-left transition-all cursor-pointer font-mono"
+                  >
+                    <div className={`p-1.5 rounded-lg bg-[#272a2d] border border-[#37393d] ${t.color}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-[#fff8f1] truncate">{t.name}</div>
+                      <div className="text-[9px] text-[#8e9099] truncate">{t.desc}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {toolCategories.map((cat) => (
             <div key={cat.title} className="space-y-2">
               <h3 className="text-[11px] font-mono font-bold text-[#8e9099] uppercase tracking-wider px-1">
@@ -291,7 +419,7 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
                         </div>
                       </div>
 
-                      <span className="px-2 py-0.5 rounded bg-[#272a2d] text-[10px] text-[#d0c5b3] border border-[#37393d]">
+                      <span className="px-2 py-0.5 rounded bg-[#272a2d] text-[10px] text-[#d0c5b3] border border-[#37393d] shrink-0 ml-2">
                         {t.badge}
                       </span>
                     </button>
@@ -303,10 +431,11 @@ export const MobileToolsDrawer: React.FC<MobileToolsDrawerProps> = ({
         </div>
 
         {/* Safe Area Footer Padding for iOS/Android bottom bars */}
-        <div className="p-3 bg-[#111417] border-t border-[#272a2d] text-center font-mono text-[11px] text-[#8e9099]">
+        <div className="p-3 bg-[#111417] border-t border-[#272a2d] text-center font-mono text-[11px] text-[#8e9099] shrink-0">
           CoinDCX Pro Mobile Terminal • Tap anywhere outside to dismiss
         </div>
       </div>
     </div>
   );
 };
+

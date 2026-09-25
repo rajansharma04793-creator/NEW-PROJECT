@@ -32,17 +32,42 @@ export type AssetPair =
   | 'XAU/USDT'
   | 'XAG/USDT'
   | 'WTI/USDT'
+  | 'BRENT/USDT'
+  | 'COPPER/USDT'
+  | 'EUR/USD'
+  | 'GBP/USD'
+  | 'USD/JPY'
+  | 'USD/INR'
+  | 'AUD/USD'
+  | 'USD/CAD'
+  | 'USD/CHF'
+  | 'NVDA/USD'
+  | 'AAPL/USD'
+  | 'TSLA/USD'
+  | 'MSFT/USD'
+  | 'AMZN/USD'
+  | 'GOOGL/USD'
+  | 'META/USD'
+  | 'RELIANCE/INR'
+  | 'TCS/INR'
+  | 'HDFCBANK/INR'
+  | 'NIFTY50'
+  | 'SPX500'
+  | 'QQQ/USD'
   | 'LUM/USDT'
   | (string & {});
 
 export type MarketCategory =
   | 'all'
   | 'hot'
+  | 'crypto'
+  | 'commodities'
+  | 'forex'
+  | 'stocks'
   | 'layer1'
   | 'ai'
   | 'defi'
   | 'meme'
-  | 'commodities'
   | 'privacy'
   | 'gainers';
 
@@ -53,7 +78,7 @@ export interface CoinMetadata {
   quoteAsset: string;
   category: MarketCategory;
   tags: string[];
-  precision: number;
+  precision?: number;
   isHot?: boolean;
   isNew?: boolean;
 }
@@ -173,6 +198,10 @@ export interface Order {
   status: 'open' | 'filled' | 'cancelled';
   timestamp: number;
   leverage: number;
+  takeProfit?: number;
+  stopLoss?: number;
+  realizedPnl?: number;
+  pnlPercent?: number;
 }
 
 export interface TechnicalSupportData {
@@ -187,6 +216,7 @@ export interface TechnicalSupportData {
   emaTrend: string;
   ema9?: number;
   ema20: number;
+  ema21?: number;
   ema26?: number;
   ema50: number;
   ema200: number;
@@ -249,6 +279,15 @@ export interface AISignal {
   timestamp: number;
   active: boolean;
   confluenceEvaluation?: ConfluenceEvaluationResult;
+  isAccepted?: boolean;
+  isLocked?: boolean;
+  lockedAt?: number;
+  setupType?: 'LIMIT_PULLBACK' | 'BREAKOUT_STOP' | 'DEMAND_RETEST' | 'SUPPLY_RETEST';
+  entryTypeDescription?: string;
+  sampleSize?: number;
+  backtestPeriod?: string;
+  maxDrawdownPercent?: number;
+  historicalLossRate?: number;
 }
 
 export interface AIChatTradeSignal {
@@ -257,6 +296,8 @@ export interface AIChatTradeSignal {
   confidence: number;
   entryPrice: number;
   entryRange?: [number, number];
+  setupType?: 'LIMIT_PULLBACK' | 'BREAKOUT_STOP' | 'DEMAND_RETEST' | 'SUPPLY_RETEST';
+  entryTypeDescription?: string;
   target1: number;
   target2: number;
   target3?: number;
@@ -324,8 +365,12 @@ export interface AutoAlertConfig {
   scanIntervalSeconds: number; // 10, 15, 30, 60
   categoryFilter: MarketCategory;
   sideFilter: 'ALL' | 'LONG' | 'SHORT';
-  selectedSymbols: AssetPair[]; // empty = all assets monitored
+  selectedSymbols: AssetPair[]; // specific stocks/coins selected by user
+  scanTargetMode?: 'all' | 'custom' | 'current_only'; // All Assets vs Custom Selected Stocks vs Current Chart Only
   popupAlerts: boolean;
+  autoExecutionEnabled?: boolean; // Autonomous Auto Entry & Exit execution
+  autoExecutionRiskPercent?: number; // Margin risk % per auto trade (1% to 10%, default 2.5%)
+  maxConcurrentAutoPositions?: number; // Max open auto positions simultaneously (1 to 5, default 3)
 }
 
 export interface AutoAlertSignalEvent {
@@ -517,17 +562,23 @@ export interface BacktestResult {
 export interface EconomicEvent {
   id: string;
   title: string;
-  country: 'US' | 'GLOBAL' | 'CRYPTO';
-  category: 'inflation' | 'central_bank' | 'employment' | 'growth' | 'token_unlock' | 'options_expiry';
+  titleHindi?: string;
+  country: 'US' | 'EU' | 'IN' | 'UK' | 'JP' | 'GLOBAL' | 'CRYPTO';
+  category: 'inflation' | 'central_bank' | 'employment' | 'growth' | 'token_unlock' | 'options_expiry' | 'commodity' | 'macro';
   impact: 'HIGH' | 'MEDIUM' | 'LOW';
+  impactHindi?: string;
+  impactDirection?: 'BULLISH' | 'BEARISH' | 'VOLATILE' | 'NEUTRAL';
   date: string; // ISO or formatted
   timestamp: number;
   timeUntil: string;
   previous?: string;
   forecast?: string;
   actual?: string;
-  volatilityRisk: 'EXTREME' | 'ELEVATED' | 'NORMAL';
+  volatilityRisk: 'EXTREME' | 'ELEVATED' | 'NORMAL' | 'HIGH';
   description: string;
+  descriptionHindi?: string;
+  marketImpactSummaryHindi?: string;
+  affectedAssets?: string[];
 }
 
 export interface MTFTimeframeData {
@@ -754,3 +805,338 @@ export interface StrategyScanResult {
   };
   timestamp: number;
 }
+
+// 5-Agent Quantitative Desk Framework Interfaces
+export interface AgentScoutOutput {
+  marketStructure: string;
+  structureType: 'BOS' | 'CHoCH' | 'RANGE' | 'LIQUIDITY_SWEEP';
+  swingHigh: number;
+  swingLow: number;
+  orderBlock: {
+    type: 'Bullish' | 'Bearish';
+    range: [number, number];
+    timeframe: string;
+  };
+  fairValueGap: {
+    present: boolean;
+    range: [number, number];
+    timeframe: string;
+  };
+  liquidityPools: {
+    buySideLiquidity: number;
+    sellSideLiquidity: number;
+    stopsSwept: boolean;
+    sweepNote: string;
+  };
+  keySupport: number;
+  keyResistance: number;
+  summary: string;
+}
+
+export interface AgentAnalystOutput {
+  trendAlignment: string;
+  emaMatrix: {
+    ema20: number;
+    ema50: number;
+    ema200: number;
+    status: 'BULLISH_CROSS' | 'BEARISH_CROSS' | 'STRONG_UPTREND' | 'STRONG_DOWNTREND' | 'CONSOLIDATION';
+    slope: string;
+  };
+  rsi: {
+    value: number;
+    zone: 'OVERSOLD' | 'BULLISH_DYNAMIC_SUPPORT' | 'NEUTRAL' | 'BEARISH_RESISTANCE' | 'OVERBOUGHT';
+    divergence: 'BULLISH_REGULAR' | 'BULLISH_HIDDEN' | 'BEARISH_REGULAR' | 'BEARISH_HIDDEN' | 'NONE';
+  };
+  volumeSpread: {
+    ratioVs20MA: number;
+    flow: 'INSTITUTIONAL_ABSORPTION' | 'EXPANSION_IMPULSE' | 'LOW_VOLUME_TEST' | 'DISTRIBUTION_CHURN';
+    description: string;
+  };
+  cpr: {
+    pivot: number;
+    tc: number;
+    bc: number;
+    width: 'VIRGIN_NARROW' | 'NARROW_TREND' | 'AVERAGE' | 'WIDE_RANGE';
+    status: 'ABOVE_CPR' | 'INSIDE_CPR' | 'BELOW_CPR';
+    r1: number;
+    r2: number;
+    s1: number;
+    s2: number;
+  };
+  summary: string;
+}
+
+export interface AgentNewsOutput {
+  assetClass: 'Crypto' | 'Forex' | 'Commodities' | 'Stocks' | 'Indices';
+  session: string;
+  macroRisk: 'LOW' | 'MODERATE' | 'ELEVATED';
+  catalysts: string[];
+  catalystsHindi?: string[];
+  metrics: {
+    label1: string;
+    value1: string;
+    label2: string;
+    value2: string;
+    label3?: string;
+    value3?: string;
+  };
+  volatilityNote: string;
+  summary: string;
+  summaryHindi?: string;
+  marketImpactHindi?: string;
+}
+
+export interface AgentValidatorOutput {
+  status: 'PASSED' | 'CAUTION' | 'REJECTED';
+  confidenceScore: number;
+  trapAudit: {
+    liquidityGrabVerified: boolean;
+    bearBullTrapDetected: boolean;
+    divergenceRisk: boolean;
+    fakeBreakoutRisk: boolean;
+  };
+  reasons: string[];
+  auditVerdict: string;
+}
+
+export interface AgentRiskControllerOutput {
+  enforcedMinRR: number;
+  action: 'STRONG BUY' | 'BUY' | 'WAIT' | 'SELL' | 'STRONG SELL';
+  entryZone: [number, number];
+  entryPrice: number;
+  stopLoss: number;
+  tp1Conservative: number;
+  tp2Runner: number;
+  riskPerShareOrUnit: number;
+  riskRewardTP1: number;
+  riskRewardTP2: number;
+  invalidationTrigger: string;
+  suggestedPositionSizePercent: number;
+  suggestedLeverage: number;
+  setupType?: 'LIMIT_PULLBACK' | 'BREAKOUT_STOP' | 'DEMAND_RETEST' | 'SUPPLY_RETEST';
+  entryTypeDescription?: string;
+}
+
+export interface AgentDeliberationReport {
+  id: string;
+  symbol: AssetPair;
+  assetClass: 'Crypto' | 'Forex' | 'Commodities' | 'Stocks' | 'Indices';
+  timeframe: string;
+  timestamp: number;
+  currentPrice: number;
+  action: 'STRONG BUY' | 'BUY' | 'WAIT' | 'SELL' | 'STRONG SELL';
+  validatorStatus: 'PASSED' | 'CAUTION' | 'REJECTED';
+  confidenceScore: number;
+  riskRewardRatio: string;
+  tradeScout: AgentScoutOutput;
+  marketAnalyst: AgentAnalystOutput;
+  newsContext: AgentNewsOutput;
+  validator: AgentValidatorOutput;
+  riskController: AgentRiskControllerOutput;
+  markdownSummary: string;
+}
+
+export type QuantEngineState = 'STOPPED' | 'RUNNING' | 'PAUSED' | 'CIRCUIT_BREAKER';
+export type QuantExecutionMode = 'PASSIVE_MAKER' | 'AGGRESSIVE_TAKER';
+
+export interface QuantOrderBookLevel {
+  price: number;
+  qty: number;
+}
+
+export interface QuantTelemetry {
+  state: QuantEngineState;
+  mode: QuantExecutionMode;
+  symbol: string;
+  binanceMid: number;
+  binanceBestBid: number;
+  binanceBestAsk: number;
+  binanceBids: QuantOrderBookLevel[];
+  binanceAsks: QuantOrderBookLevel[];
+  binanceLatencyMs: number;
+  coindcxMid: number;
+  coindcxBestBid: number;
+  coindcxBestAsk: number;
+  coindcxBids: QuantOrderBookLevel[];
+  coindcxAsks: QuantOrderBookLevel[];
+  coindcxLatencyMs: number;
+  spreadDelta: number;
+  top5OBI: number;
+  rollingCVD: number;
+  walletBalance: number;
+  usedMargin: number;
+  marginRatioPct: number;
+  liquidationBufferPct: number;
+  openPosition: {
+    side: 'LONG' | 'SHORT' | 'FLAT';
+    size: number;
+    entryPrice: number;
+    pnl: number;
+  };
+  lastExecutionRttMs: number;
+  circuitBreakerActive: boolean;
+  consecutiveErrors: number;
+  recentLogs: { time: string; level: 'info' | 'warn' | 'error' | 'success'; msg: string }[];
+}
+
+/**
+ * Three explicitly separated product trading modes
+ */
+export type ProductTradingMode = 'RESEARCH' | 'PAPER' | 'LIVE';
+
+/**
+ * Order review payload for deliberate 2-step confirmation
+ */
+export interface OrderReviewPayload {
+  idempotencyKey: string;
+  symbol: AssetPair;
+  market: string;
+  side: 'buy' | 'sell';
+  orderType: 'market' | 'limit' | 'stop-limit' | 'ai-smart';
+  quantity: number;
+  entryPrice: number;
+  currentMarketPrice: number;
+  leverage: number;
+  marginMode: 'cross' | 'isolated';
+  requiredMargin: number;
+  tradingFeeEstimate: number;
+  fundingEstimate: number;
+  spreadEstimate: number;
+  slippageEstimate: number;
+  maxPlannedLoss: number;
+  takeProfit?: number;
+  stopLoss?: number;
+  estimatedLiqPrice: number;
+  accountBalanceAfterTrade: number;
+  remainingBuyingPower: number;
+  dataSource: string;
+  dataTimestamp: number;
+  isDataStale: boolean;
+  userAcceptedRisk?: boolean;
+}
+
+/**
+ * Risk Engine validation result
+ */
+export interface RiskValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  metrics: {
+    positionSizeUsd: number;
+    requiredMargin: number;
+    initialMargin: number;
+    maintenanceMargin: number;
+    tradingFee: number;
+    fundingFee: number;
+    spread: number;
+    slippage: number;
+    maxPlannedLoss: number;
+    estimatedLiqPrice: number;
+    accountExposurePct: number;
+    symbolExposurePct: number;
+    dailyLossPct: number;
+    openPositionsCount: number;
+    maxLeverageAllowed: number;
+    remainingBuyingPower: number;
+  };
+}
+
+/**
+ * Audit log entry for every order decision
+ */
+export interface OrderAuditLogEntry {
+  id: string;
+  idempotencyKey: string;
+  timestamp: number;
+  mode: ProductTradingMode;
+  symbol: AssetPair;
+  side: 'buy' | 'sell';
+  orderType: string;
+  quantity: number;
+  price: number;
+  leverage: number;
+  marginRequired: number;
+  status: 'VALIDATED' | 'REJECTED' | 'EXECUTED_SIMULATED' | 'BLOCKED_RISK' | 'BLOCKED_AUTH';
+  rejectionReason?: string;
+  riskMetricsSnapshot?: Record<string, number>;
+}
+
+/**
+ * Signal ledger record for full transparency and documented methodology
+ */
+export interface SignalLedgerEntry {
+  id: string;
+  symbol: AssetPair;
+  timestamp: number;
+  timeframe: string;
+  side: 'LONG' | 'SHORT';
+  status: 'WINNER' | 'LOSER' | 'INVALIDATED' | 'EXPIRED' | 'CANCELLED';
+  strategyVersion: string;
+  entryPrice: number;
+  exitPrice?: number;
+  stopLoss: number;
+  target1: number;
+  target2: number;
+  pnlPercent: number;
+  riskReward: string;
+  feesDeducted: boolean;
+  slippageDeducted: boolean;
+  isSimulated: boolean;
+  durationMinutes: number;
+}
+
+/**
+ * Single source of truth for trade setups across signals, charts, and order form (Requirement 1)
+ */
+export interface UnifiedTradeSetup {
+  symbol: AssetPair;
+  side: 'LONG' | 'SHORT';
+  entry: number;
+  takeProfit: number;
+  stopLoss: number;
+  timeframe: string;
+  signalId?: string;
+  updatedAt: number;
+}
+
+/**
+ * Single source of truth for trade setups across signals, charts, and order form
+ */
+export interface TradeSetup {
+  symbol: AssetPair;
+  side: 'buy' | 'sell';
+  orderType: 'limit' | 'market' | 'stop-limit' | 'ai-smart';
+  entryPrice: number;
+  currentMarketPrice: number;
+  quantity: number;
+  leverage: number;
+  stopLoss: number;
+  takeProfit: number;
+  quoteTimestamp: number;
+  source: 'manual' | 'signal' | 'chart' | 'radar';
+  signalId?: string;
+  strategyName?: string;
+  marginType?: 'cross' | 'isolated';
+  totalValue?: number;
+  marginRequired?: number;
+  sourceSignal?: AISignal | null;
+}
+
+export interface TradeSetupValidation {
+  isValid: boolean;
+  isStale: boolean;
+  quoteAgeMs: number;
+  directionalError: string | null;
+  riskError: string | null;
+  leverageError: string | null;
+  generalError: string | null;
+  stopLossError?: string | null;
+  takeProfitError?: string | null;
+  plannedLossUsd: number;
+  plannedLossPercent: number;
+  maxAllowedRiskUsd: number;
+  messages: string[];
+}
+
+

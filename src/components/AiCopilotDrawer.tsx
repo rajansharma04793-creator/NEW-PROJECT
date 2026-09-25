@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AISignal, AssetPair, TickerInfo } from '../types';
+import React, { useState, useEffect } from 'react';
+import { AISignal, AssetPair, TickerInfo, Position, Candle } from '../types';
 import {
   Sparkles,
   BrainCircuit,
@@ -31,6 +31,11 @@ interface AiCopilotDrawerProps {
   onAddNewSignal?: (signal: AISignal) => void;
   onUpdateSignals?: (signals: AISignal[]) => void;
   onSelectPair?: (pair: AssetPair) => void;
+  positions?: Position[];
+  balance?: number;
+  onClosePosition?: (posId: string) => void;
+  onUpdatePositionSL?: (posId: string, newSL: number) => void;
+  candles?: Candle[];
 }
 
 export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
@@ -44,6 +49,11 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
   onAddNewSignal,
   onUpdateSignals,
   onSelectPair,
+  positions = [],
+  balance = 100000,
+  onClosePosition,
+  onUpdatePositionSL,
+  candles = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'signals' | 'generator'>('chat');
   const [filterPair, setFilterPair] = useState<string>('ALL');
@@ -58,24 +68,53 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedSignalId, setExpandedSignalId] = useState<string | null>(signals[0]?.id || null);
   const [lastGeneratedSource, setLastGeneratedSource] = useState<string | null>(null);
+  const drawerRef = React.useRef<HTMLElement>(null);
+
+  // Focus management when drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      drawerRef.current?.focus();
+    }
+  }, [isOpen]);
+
+  // Accessible Escape key listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const handleGenerateSignal = async () => {
     setGenerating(true);
     try {
-      const activeTicker = tickers[targetAsset] || tickers[currentPair];
+      const activeTicker = tickers[targetAsset] || tickers[currentPair] || {
+        price: 2427.52,
+        high24h: 2490,
+        low24h: 2380,
+        change24h: 1.5,
+        volume24h: 50000,
+      };
       const newSignal = await requestAISignal({
         symbol: targetAsset,
         currentPrice: activeTicker.price,
         timeframe: selectedTimeframe,
         strategy: selectedStrategy,
         riskProfile: selectedRiskProfile,
+        candles,
         marketMetrics: {
           high24h: activeTicker.high24h,
           low24h: activeTicker.low24h,
           change24h: activeTicker.change24h,
           volume24h: activeTicker.volume24h,
+          candles,
         },
       });
 
@@ -84,7 +123,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
       }
       setExpandedSignalId(newSignal.id);
       setActiveTab('signals');
-      setLastGeneratedSource('Gemini 3.7 Flash & Quantitative Engine');
+      setLastGeneratedSource('Gemini 3.8 Flash & Quantitative Engine');
     } catch (err) {
       console.error('Error generating signal:', err);
     } finally {
@@ -133,8 +172,21 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/65 backdrop-blur-xs font-hanken">
-      <div className="w-full max-w-xl md:max-w-2xl bg-[#111417] h-full border-l border-[#272a2d] shadow-2xl flex flex-col justify-between">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/65 backdrop-blur-xs font-hanken"
+      onClick={onClose}
+    >
+      <aside
+        id="ai-copilot-drawer"
+        ref={drawerRef as any}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-copilot-title"
+        aria-label="AI Copilot & Analyst"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xl md:max-w-2xl bg-[#111417] h-full border-l border-[#272a2d] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 outline-none"
+      >
         {/* Header */}
         <div className="p-4 bg-[#191c1f] border-b border-[#272a2d] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -143,7 +195,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-[#fff8f1] text-sm tracking-tight">AI Copilot & Analyst</h3>
+                <h3 id="ai-copilot-title" className="font-bold text-[#fff8f1] text-sm tracking-tight">AI Copilot & Analyst</h3>
                 <span className="text-[10px] px-2 py-0.5 bg-[#00ff94]/20 text-[#00ff94] rounded font-mono font-bold border border-[#00ff94]/30">
                   Gemini 3.7 + Quant
                 </span>
@@ -155,8 +207,11 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
           </div>
 
           <button
+            id="close-copilot-btn"
             onClick={onClose}
+            aria-label="Close AI Copilot"
             className="p-1.5 text-[#99907f] hover:text-[#fff8f1] hover:bg-[#272a2d] rounded transition-colors cursor-pointer"
+            title="Close AI Copilot"
           >
             <X className="w-5 h-5" />
           </button>
@@ -226,6 +281,11 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
                 if (onSelectSignalForChart) onSelectSignalForChart(sig);
               }}
               onSelectSignalForChart={onSelectSignalForChart}
+              positions={positions}
+              balance={balance}
+              onClosePosition={onClosePosition}
+              onUpdatePositionSL={onUpdatePositionSL}
+              candles={candles}
             />
           </div>
         ) : (
@@ -638,7 +698,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
           </div>
           <span>CoinDCX Latency: ~18ms</span>
         </div>
-      </div>
+      </aside>
     </div>
   );
 };

@@ -16,6 +16,8 @@ import {
   Check,
   Zap,
   Clock,
+  Globe,
+  Building2,
 } from 'lucide-react';
 
 interface MarketSearchModalProps {
@@ -29,14 +31,16 @@ interface MarketSearchModalProps {
 }
 
 const CATEGORY_TABS: { id: MarketCategory; label: string; icon: React.ReactNode }[] = [
-  { id: 'all', label: 'All', icon: <Layers className="w-3.5 h-3.5" /> },
+  { id: 'all', label: 'All Markets', icon: <Layers className="w-3.5 h-3.5" /> },
   { id: 'hot', label: 'Trending', icon: <Flame className="w-3.5 h-3.5 text-[#ff8400]" /> },
-  { id: 'layer1', label: 'Layer 1', icon: <Zap className="w-3.5 h-3.5 text-[#f6be16]" /> },
+  { id: 'commodities', label: 'Gold & Silver', icon: <Gem className="w-3.5 h-3.5 text-[#ffd87f]" /> },
+  { id: 'forex', label: 'Forex (FX)', icon: <Globe className="w-3.5 h-3.5 text-[#38bdf8]" /> },
+  { id: 'stocks', label: 'Stocks & Indices', icon: <Building2 className="w-3.5 h-3.5 text-[#a855f7]" /> },
+  { id: 'layer1', label: 'Crypto L1', icon: <Zap className="w-3.5 h-3.5 text-[#f6be16]" /> },
   { id: 'ai', label: 'AI & Compute', icon: <Cpu className="w-3.5 h-3.5 text-[#00ff94]" /> },
   { id: 'defi', label: 'DeFi', icon: <Coins className="w-3.5 h-3.5 text-[#3b82f6]" /> },
   { id: 'meme', label: 'Memes', icon: <Flame className="w-3.5 h-3.5 text-[#ff3b4a]" /> },
-  { id: 'commodities', label: 'Commodities', icon: <Gem className="w-3.5 h-3.5 text-[#e5c07b]" /> },
-  { id: 'privacy', label: 'Privacy', icon: <Shield className="w-3.5 h-3.5 text-[#a855f7]" /> },
+  { id: 'privacy', label: 'Privacy', icon: <Shield className="w-3.5 h-3.5 text-[#ec4899]" /> },
   { id: 'gainers', label: 'Top Gainers', icon: <TrendingUp className="w-3.5 h-3.5 text-[#00ff94]" /> },
 ];
 
@@ -394,6 +398,11 @@ export const MarketSearchModal: React.FC<MarketSearchModalProps> = ({
                         <span className="text-[10px] uppercase px-1 py-0.2 rounded bg-[#111417] text-[#99907f]">
                           {coin.category}
                         </span>
+                        {(coin.category === 'forex' || coin.category === 'commodities' || coin.category === 'stocks') && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-[#38bdf8]/15 text-[#38bdf8] font-bold">
+                            Investing.com Feed
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
